@@ -10,6 +10,25 @@ A 16:9 (1920×1080) text-layout reference for video frames, built on the grid pr
 |---|---|
 | ![](previews/layout-annotated.en.png) | ![](previews/layout-clean.zh.png) |
 
+## 画面排版生成器 · Frame Layout Finder
+
+`layout-finder.html`：载入任意照片，在浏览器本地分析画面（繁杂度、显著主体、高光、对比度），在 12 栏网格上评估约 3000 个文字位置，给出 3 个最佳方案，并按 8 条原则逐项检查、绘制红线标注。支持中英切换、编辑文案、生成 PNG、复制布局参数 JSON。照片不会上传。
+
+`layout-finder.html` loads any photo, analyses it locally (busyness, salient subject, highlights, contrast), scores about 3,000 grid-aligned text positions and returns the 3 best layouts, each checked against the 8 principles with redline annotations. Chinese/English UI, editable copy, PNG output and layout JSON. Photos never leave the browser.
+
+用法：直接用浏览器打开该文件，点击“载入照片”，或拖入、粘贴图片。
+
+| 原则 · Principle | 生成器如何执行 · How the finder applies it |
+|---|---|
+| 1 文字放在安静处 | 选繁杂度最低、不压主体的区域 · lowest-busyness area clear of the subject |
+| 2 清晰字号层级 | 24 / 72–96 / 32–36 三级 · three distinct sizes |
+| 3 共用对齐边 | 左、右或居中对齐到栏线 · left/right/centre on a column edge |
+| 4 12px 间距 | 所有坐标与间距吸附 12px · everything snaps to 12 px |
+| 5 标注贴近对象 | 引导线连到第二视觉对象 · leader line to the secondary object |
+| 6 字幕独立区 | 第 3–10 栏底部，过亮自动加底衬 · cols 3–10, band added when too bright |
+| 7 有意留白 | 惩罚与主体重叠 · overlap with the subject is penalised |
+| 8 出现节奏 | 按字数估算停留时间 · hold time estimated from copy length |
+
 ## 使用 · Usage
 
 1. 用浏览器打开 `index.html`（中文）或 `index.en.html`（English）。

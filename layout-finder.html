@@ -1,0 +1,596 @@
+<meta charset="utf-8">
+<title>Frame Layout Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+SC:wght@400;600;700&display=swap">
+<style>
+/* Layout: a QC spec sheet. The frame sits on top like a monitor; the principle readouts sit beneath it like an inspection report. */
+:root{
+  --bg:#eef0ee; --panel:#ffffff; --fg:#17191b; --muted:#5d6468; --line:#d5dad8;
+  --accent:#d6274a;        /* redline */
+  --dim:#0f8fb8;           /* dimension cyan */
+  --ok:#1f8a55; --warn:#b86e00;
+  --sans:"IBM Plex Sans","Noto Sans SC",system-ui,sans-serif;
+  --mono:"IBM Plex Mono","Noto Sans SC",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111315; --panel:#1a1d20; --fg:#e8eaeb; --muted:#99a1a6; --line:#2b3034;
+  --accent:#ff4d6d; --dim:#3fc7f2; --ok:#4fd18b; --warn:#f2a93b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111315; --panel:#1a1d20; --fg:#e8eaeb; --muted:#99a1a6; --line:#2b3034;
+  --accent:#ff4d6d; --dim:#3fc7f2; --ok:#4fd18b; --warn:#f2a93b; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font:15px/1.55 var(--sans);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:1280px;margin:0 auto;display:grid;gap:18px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+h1{margin:0;font:600 22px/1.2 var(--sans);letter-spacing:-.01em}
+h1 span{font:500 12px var(--mono);color:var(--accent);letter-spacing:.08em;display:block;margin-bottom:6px;text-transform:uppercase}
+.sub{margin:4px 0 0;color:var(--muted);max-width:62ch}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:none;color:var(--fg);font:500 13px var(--sans);padding:7px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg)}
+.tools{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--fg);font:500 13px var(--sans);padding:7px 12px;border-radius:8px;cursor:pointer}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:focus-visible,.seg button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--dim);outline-offset:2px}
+.chk{display:inline-flex;gap:6px;align-items:center;font:500 13px var(--sans);color:var(--muted);cursor:pointer}
+.stagebox{position:relative;border-radius:6px;overflow:hidden;background:#000;max-width:100%}
+#cv{display:block;width:100%;height:auto;aspect-ratio:16/9}
+.drop{position:absolute;inset:0;display:grid;place-items:center;background:rgba(214,39,74,.18);border:3px dashed var(--accent);color:#fff;font:600 18px var(--sans);opacity:0;pointer-events:none;transition:opacity .15s}
+.stagebox.over .drop{opacity:1}
+.status{font:500 12px var(--mono);color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 16px}
+.status b{color:var(--fg);font-weight:600}
+.variants{display:flex;flex-wrap:wrap;gap:8px}
+.variants button{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:8px;padding:8px 12px;cursor:pointer;text-align:left;font:500 13px var(--sans)}
+.variants button small{display:block;font:400 11px var(--mono);color:var(--muted)}
+.variants button[aria-pressed="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.report{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px;min-width:0;display:grid;gap:6px;align-content:start}
+.card h3{margin:0;display:flex;align-items:center;gap:8px;font:600 14px/1.3 var(--sans)}
+.card h3 i{font-style:normal;display:inline-grid;place-items:center;width:22px;height:22px;flex:none;border-radius:50%;background:var(--accent);color:#fff;font:600 12px var(--mono)}
+.pill{margin-left:auto;font:600 11px var(--mono);padding:2px 8px;border-radius:99px;border:1px solid currentColor;white-space:nowrap}
+.pill.ok{color:var(--ok)} .pill.warn{color:var(--warn)}
+.card p{margin:0;color:var(--muted);font-size:13.5px}
+.card .m{font:500 12.5px var(--mono);color:var(--fg);font-variant-numeric:tabular-nums}
+details{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 14px}
+summary{cursor:pointer;font:600 14px var(--sans)}
+.fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:10px;margin-top:12px}
+.fields label{display:grid;gap:4px;font:500 12px var(--mono);color:var(--muted)}
+.fields input{font:15px var(--sans);padding:7px 9px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--fg);min-width:0}
+#outbox img{display:block;width:100%;height:auto;border-radius:6px;margin-top:10px}
+.foot{color:var(--muted);font-size:13px;max-width:80ch}
+h2{margin:6px 0 0;font:600 15px var(--sans)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1><span id="t-kicker">1920 × 1080 · 12-col grid</span><b id="t-title">Frame Layout Finder</b></h1>
+      <p class="sub" id="t-sub"></p>
+    </div>
+    <div class="seg" role="group" aria-label="Language">
+      <button id="lang-zh" aria-pressed="false">中文</button><button id="lang-en" aria-pressed="false">EN</button>
+    </div>
+  </header>
+
+  <div class="tools">
+    <label class="btn primary" for="file" id="t-load">Load photo</label>
+    <input id="file" type="file" accept="image/*" hidden>
+    <button class="btn" id="shuffle"></button>
+    <button class="btn" id="sample"></button>
+    <span class="seg" role="group" aria-label="Layers">
+      <button data-layer="text" aria-pressed="true"></button><button data-layer="grid" aria-pressed="true"></button><button data-layer="zones" aria-pressed="true"></button><button data-layer="notes" aria-pressed="true"></button><button data-layer="heat" aria-pressed="false"></button>
+    </span>
+    <label class="chk"><input type="checkbox" id="opt-label" checked><span id="t-optlabel"></span></label>
+    <label class="chk"><input type="checkbox" id="opt-subs" checked><span id="t-optsubs"></span></label>
+  </div>
+
+  <div class="stagebox" id="stagebox">
+    <canvas id="cv" width="1920" height="1080"></canvas>
+    <div class="drop" id="t-drop"></div>
+  </div>
+  <div class="status" id="status"></div>
+
+  <div class="variants" id="variants"></div>
+
+  <h2 id="t-report"></h2>
+  <div class="report" id="report"></div>
+
+  <details id="copybox">
+    <summary id="t-edit"></summary>
+    <div class="fields">
+      <label><span data-f="eyebrow"></span><input id="f-eyebrow"></label>
+      <label><span data-f="h"></span><input id="f-h"></label>
+      <label><span data-f="body"></span><input id="f-body"></label>
+      <label><span data-f="k"></span><input id="f-k"></label>
+      <label><span data-f="s"></span><input id="f-s"></label>
+      <label><span data-f="zh"></span><input id="f-zh"></label>
+      <label><span data-f="en"></span><input id="f-en"></label>
+      <label><span data-f="brand"></span><input id="f-brand"></label>
+    </div>
+  </details>
+
+  <div class="tools">
+    <button class="btn" id="export"></button>
+    <button class="btn" id="copyspec"></button>
+    <span class="status" id="copymsg"></span>
+  </div>
+  <div id="outbox" hidden><p class="foot" id="t-save"></p><img id="out" alt="Exported layout"></div>
+
+  <p class="foot" id="t-foot"></p>
+</div>
+
+<script>
+/* ===================== strings ===================== */
+const T={
+zh:{kicker:"1920 × 1080 · 12 栏网格",title:"画面排版生成器",
+ sub:"载入任意照片，按 8 条网格排版原则自动找出最佳文字位置。照片只在本地浏览器分析，不会上传。",
+ load:"载入照片",shuffle:"换一组文案",sample:"示例画面",layers:{text:"文字",grid:"网格",zones:"分析分区",notes:"排版标注",heat:"热力图"},
+ optlabel:"数据标注",optsubs:"双语字幕",drop:"松开以载入照片",report:"8 条原则检查",edit:"编辑文案（主标题用 / 分行）",
+ f:{eyebrow:"引题",h:"主标题",body:"正文",k:"标注 · 主行",s:"标注 · 副行",zh:"字幕 · 中文",en:"字幕 · 英文",brand:"品牌"},
+ export:"生成 PNG",copyspec:"复制布局参数 JSON",copied:"已复制",copyfail:"复制失败，已在下方显示",save:"右键（手机长按）图片即可保存。导出内容与当前开启的图层一致。",
+ foot:"说明：评分基于画面繁杂度（边缘密度）、显著性（边缘 + 色彩对比）、高光与 WCAG 对比度估算，属启发式结果。人物脸部、文字类画面和动态镜头仍需人工复核，并在目标设备上以正常速度观看验证。",
+ variant:"方案",pos:{l:"左",c:"中",r:"右",t:"上",m:"中",b:"下"},quietPct:"比全画面安静",
+ st:{src:"画面",sample:"示例画面（程序生成）",crop:"已居中裁切为 16:9",busy:"全画面繁杂度",subject:"主体区",none:"未检出明显主体"},
+ zone:{hero:"主体区 · 保持留白",hot:"高亮区 · 白字对比不足",quiet:"安静区"},
+ tag:{1:"文字放在安静区",2:"字号层级",3:"共用对齐边",4:"间距 12 的倍数",5:"标注贴近对象",6:"字幕独立区",7:"主体留白",8:"出现顺序"},
+ p:[ "文字放在画面安静处","建立清晰的字号层级","共用一条对齐边","以 12px 为间距单位","标注与对象相连","字幕有独立区域","有意保留空白","按顺序出现、留足阅读时间"],
+ ok:"达标",warn:"注意"},
+en:{kicker:"1920 × 1080 · 12-col grid",title:"Frame Layout Finder",
+ sub:"Load any photo and get the best text layout for it, checked against 8 grid principles. The photo is analyzed in your browser and never uploaded.",
+ load:"Load photo",shuffle:"New copy",sample:"Sample frame",layers:{text:"Text",grid:"Grid",zones:"Zones",notes:"Redlines",heat:"Heatmap"},
+ optlabel:"Data label",optsubs:"Bilingual subtitles",drop:"Drop to load photo",report:"8-principle check",edit:"Edit copy (split headline lines with /)",
+ f:{eyebrow:"Eyebrow",h:"Headline",body:"Body",k:"Label · main",s:"Label · sub",zh:"Subtitle · Chinese",en:"Subtitle · English",brand:"Brand"},
+ export:"Make PNG",copyspec:"Copy layout JSON",copied:"Copied",copyfail:"Copy failed; shown below",save:"Right-click (long-press on phone) the image to save it. It shows the layers that are on.",
+ foot:"Scoring uses image busyness (edge density), saliency (edges plus colour contrast), highlights and an estimated WCAG contrast ratio. It is a heuristic: faces, on-screen text and moving shots still need a human check, and the result should be watched at normal speed on the target device.",
+ variant:"Option",pos:{l:"left",c:"centre",r:"right",t:"top",m:"middle",b:"bottom"},quietPct:"quieter than frame",
+ st:{src:"Frame",sample:"Sample frame (generated)",crop:"centre-cropped to 16:9",busy:"Frame busyness",subject:"Subject",none:"No clear subject found"},
+ zone:{hero:"SUBJECT · keep clear",hot:"HIGHLIGHT · white text fails",quiet:"QUIET ZONE"},
+ tag:{1:"text on quiet area",2:"type scale",3:"shared edge",4:"spacing ×12",5:"label tied to object",6:"subtitle zone",7:"subject kept clear",8:"build order"},
+ p:["Text sits where the frame is quiet","Clear type hierarchy","One shared alignment edge","Spacing in 12-px steps","Label tied to its object","Subtitles get their own zone","Empty space on purpose","Staged build, enough reading time"],
+ ok:"pass",warn:"check"}};
+
+const COPY={
+zh:[
+ {eyebrow:"新品发布",h:"把复杂留给系统，/把时间还给你。",body:"一次设置，长期安心。",k:"自动感知环境",s:"无需手动调节",zh:"它在后台安静工作，你只管享受当下。",en:"It works quietly in the background. You just enjoy the moment.",brand:"NORTHLIGHT"},
+ {eyebrow:"家的节奏",h:"少些安排，/多抱一会。",body:"让日常安排，自然就绪。",k:"日历 · 天气 · 照片",s:"一天的安排，一眼掌握",zh:"日程交给它，拥抱留给彼此。",en:"Leave the schedule to it. Keep the embrace for each other.",brand:"HEARTH"},
+ {eyebrow:"城市夜行",h:"灯亮起时，/路就在脚下。",body:"为每一段归途照明。",k:"续航 18 小时",s:"一次充电，整周通勤",zh:"再晚回家，也有光陪你走完最后一段。",en:"However late you head home, there is light for the last stretch.",brand:"LUMA"},
+ {eyebrow:"慢下来",h:"一杯好咖啡，/从安静开始。",body:"研磨、萃取、等待，刚刚好。",k:"恒温 92°C",s:"每一杯都稳定如初",zh:"清晨的第一口，值得多等三十秒。",en:"The first sip of the morning is worth thirty more seconds.",brand:"OAKROAST"}],
+en:[
+ {eyebrow:"Introducing",h:"Less setup./More life.",body:"Set it once. Forget it's there.",k:"Senses the room",s:"Adjusts on its own",zh:"它在后台安静工作，你只管享受当下。",en:"It works quietly in the background. You just enjoy the moment.",brand:"NORTHLIGHT"},
+ {eyebrow:"Home, in sync",h:"Plan less./Hold on longer.",body:"Your day arranges itself.",k:"Calendar · Weather · Photos",s:"Your whole day, one glance",zh:"日程交给它，拥抱留给彼此。",en:"Leave the schedule to it. Keep the embrace for each other.",brand:"HEARTH"},
+ {eyebrow:"After dark",h:"Light the way/home.",body:"Made for every late commute.",k:"18-hour battery",s:"A full week on one charge",zh:"再晚回家，也有光陪你走完最后一段。",en:"However late you head home, there is light for the last stretch.",brand:"LUMA"},
+ {eyebrow:"Slow down",h:"Good coffee/starts quiet.",body:"Grind, brew, wait. Just right.",k:"Holds 92 °C",s:"Every cup, the same",zh:"清晨的第一口，值得多等三十秒。",en:"The first sip of the morning is worth thirty more seconds.",brand:"OAKROAST"}]};
+
+/* ===================== grid constants ===================== */
+const W=1920,H=1080,M=120,MT=96,COL=118,GUT=24,U=12;
+const colX=c=>M+(c-1)*(COL+GUT), colEnd=c=>colX(c)+COL, spanW=s=>s*COL+(s-1)*GUT;
+const FONT='"Noto Sans SC","PingFang SC","Hiragino Sans GB",sans-serif';
+const MONO='"IBM Plex Mono","Noto Sans SC",monospace';
+const SIZES=[{h:72,lh:84,b:32,blh:48},{h:84,lh:96,b:36,blh:48},{h:96,lh:108,b:36,blh:48}];
+const C_RED="#ff3b6b",C_CYAN="#35d0ff",C_AMBER="#ffb547",C_GREEN="#5be49b";
+const TXT_LIGHT="#f6f1e8",TXT_DARK="#16130f",L_LIGHT=0.88,L_DARK=0.0065;
+
+/* ===================== state ===================== */
+let lang=(navigator.language||"").toLowerCase().startsWith("zh")?"zh":"en";
+try{const s=localStorage.getItem("flf-lang");if(s)lang=s;}catch(e){}
+const S={frame:null,isSample:true,cropped:false,A:null,copy:null,copyIdx:0,variants:[],vi:0,
+  layers:{text:true,grid:true,zones:true,notes:true,heat:false},opt:{label:true,subs:true}};
+const $=id=>document.getElementById(id);
+const cv=$("cv"),ctx=cv.getContext("2d");
+const mk=(w,h)=>{const c=document.createElement("canvas");c.width=w;c.height=h;return c;};
+
+/* ===================== sample frame (procedural) ===================== */
+function sampleFrame(){
+  const c=mk(W,H),x=c.getContext("2d");
+  let g=x.createLinearGradient(0,0,W,0);g.addColorStop(0,"#17120e");g.addColorStop(.42,"#2f2318");g.addColorStop(.75,"#4a3524");g.addColorStop(1,"#241a12");
+  x.fillStyle=g;x.fillRect(0,0,W,H);
+  const hasF="filter" in x;
+  if(hasF)x.filter="blur(28px)";
+  x.fillStyle="#f3e5c6";x.fillRect(780,170,380,470);
+  x.fillStyle="#9fb7c0";x.fillRect(800,190,160,200);
+  if(hasF)x.filter="blur(6px)";
+  x.fillStyle="#d8b78a";x.beginPath();x.ellipse(1000,110,170,110,0,0,7);x.fill();
+  if(hasF)x.filter="none";
+  x.fillStyle="#3b352f";x.beginPath();x.moveTo(0,840);x.lineTo(1300,820);x.lineTo(1320,H);x.lineTo(0,H);x.fill();
+  // device on counter (secondary object)
+  x.save();x.translate(520,690);x.rotate(.05);x.fillStyle="#0c0e12";x.fillRect(-230,-180,460,330);
+  const sg=x.createLinearGradient(-200,-150,200,140);sg.addColorStop(0,"#21414a");sg.addColorStop(1,"#2e8f7d");x.fillStyle=sg;x.fillRect(-205,-155,410,280);
+  x.fillStyle="#e9f3f0";x.font="600 34px sans-serif";x.fillText("10:30",-180,-100);x.fillStyle="#f0b45a";x.fillRect(-180,-60,170,140);
+  x.fillStyle="#6ad1ff";x.fillRect(-205,128,410,6);x.restore();
+  // figures (hero)
+  x.fillStyle="#7a6a55";x.beginPath();x.moveTo(1240,H);x.bezierCurveTo(1230,700,1260,420,1380,330);x.bezierCurveTo(1450,280,1560,290,1620,380);x.bezierCurveTo(1720,520,1700,800,1660,H);x.fill();
+  x.fillStyle="#2a2119";x.beginPath();x.ellipse(1440,200,85,105,-.2,0,7);x.fill();x.beginPath();x.ellipse(1560,230,80,110,.3,0,7);x.fill();
+  x.fillStyle="#c9c2b6";x.beginPath();x.moveTo(1480,330);x.bezierCurveTo(1560,300,1640,360,1650,480);x.lineTo(1560,640);x.lineTo(1470,520);x.fill();
+  x.fillStyle="#2f3a4a";x.fillRect(1420,640,220,440);
+  x.strokeStyle="rgba(255,214,160,.55)";x.lineWidth=5;for(let k=0;k<14;k++){x.beginPath();x.moveTo(1300+k*22,360+k*30);x.bezierCurveTo(1380+k*14,420+k*28,1460+k*8,520+k*20,1520+k*6,600+k*30);x.stroke();}
+  x.fillStyle="#d9a77a";x.beginPath();x.ellipse(1500,250,26,40,.2,0,7);x.fill();
+  // grain
+  const id=x.getImageData(0,0,W,H),d=id.data;for(let i=0;i<d.length;i+=4){const n=(Math.random()-.5)*10;d[i]+=n;d[i+1]+=n;d[i+2]+=n;}x.putImageData(id,0,0);
+  return c;
+}
+
+/* ===================== analysis ===================== */
+const AW=480,AH=270,GW=160,GH=90;
+const sl=v=>v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4);
+function blur(a,w,h,r){ // separable box blur, applied twice
+  let src=a,tmp=new Float32Array(w*h),out=new Float32Array(w*h);
+  for(let pass=0;pass<2;pass++){
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,n=0;for(let k=-r;k<=r;k++){const xx=x+k;if(xx>=0&&xx<w){s+=src[y*w+xx];n++;}}tmp[y*w+x]=s/n;}
+    for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,n=0;for(let k=-r;k<=r;k++){const yy=y+k;if(yy>=0&&yy<h){s+=tmp[yy*w+x];n++;}}out[y*w+x]=s/n;}
+    src=out;out=new Float32Array(w*h);
+  }
+  return src;
+}
+const pct=(a,p)=>{const s=Float32Array.from(a).sort();return s[Math.min(s.length-1,Math.floor(p*s.length))];};
+function integ(a){const I=new Float64Array((GW+1)*(GH+1));for(let y=0;y<GH;y++){let row=0;for(let x=0;x<GW;x++){row+=a[y*GW+x];I[(y+1)*(GW+1)+x+1]=I[y*(GW+1)+x+1]+row;}}return I;}
+function analyze(frame){
+  const c=mk(AW,AH),x=c.getContext("2d",{willReadFrequently:true});x.drawImage(frame,0,0,AW,AH);
+  const d=x.getImageData(0,0,AW,AH).data,N=AW*AH;
+  const gray=new Float32Array(N),lin=new Float32Array(N),oa=new Float32Array(N),ob=new Float32Array(N);
+  for(let i=0;i<N;i++){const r=d[4*i]/255,g=d[4*i+1]/255,b=d[4*i+2]/255;gray[i]=.299*r+.587*g+.114*b;lin[i]=.2126*sl(r)+.7152*sl(g)+.0722*sl(b);oa[i]=r-g;ob[i]=(r+g)/2-b;}
+  const grad=new Float32Array(N);
+  for(let y=1;y<AH-1;y++)for(let x=1;x<AW-1;x++){const i=y*AW+x;
+    const gx=gray[i-AW+1]+2*gray[i+1]+gray[i+AW+1]-gray[i-AW-1]-2*gray[i-1]-gray[i+AW-1];
+    const gy=gray[i+AW-1]+2*gray[i+AW]+gray[i+AW+1]-gray[i-AW-1]-2*gray[i-AW]-gray[i-AW+1];grad[i]=Math.hypot(gx,gy);}
+  const G=GW*GH,cg=new Float32Array(G),cl=new Float32Array(G),cl2=new Float32Array(G),cgr=new Float32Array(G),cg2=new Float32Array(G),ca=new Float32Array(G),cb=new Float32Array(G);
+  for(let y=0;y<AH;y++)for(let x=0;x<AW;x++){const i=y*AW+x,j=((y/3)|0)*GW+((x/3)|0);
+    cg[j]+=gray[i]/9;cg2[j]+=gray[i]*gray[i]/9;cl[j]+=lin[i]/9;cl2[j]+=lin[i]*lin[i]/9;cgr[j]+=grad[i]/9;ca[j]+=oa[i]/9;cb[j]+=ob[i]/9;}
+  // busyness
+  const gp=Math.max(1e-3,pct(cgr,.95));const busy=new Float32Array(G);for(let i=0;i<G;i++)busy[i]=Math.min(1,cgr[i]/gp);
+  const busyB=blur(busy,GW,GH,2);
+  // colour / luminance contrast vs frame mean
+  let ma=0,mb=0,mg=0;for(let i=0;i<G;i++){ma+=ca[i];mb+=cb[i];mg+=cg[i];}ma/=G;mb/=G;mg/=G;
+  const cc=new Float32Array(G);for(let i=0;i<G;i++)cc[i]=Math.hypot(ca[i]-ma,cb[i]-mb)*1.6+Math.abs(cg[i]-mg)*.6;
+  const ccB=blur(cc,GW,GH,4);const ccMax=Math.max(1e-3,pct(ccB,.99));
+  const eB=blur(busy,GW,GH,4);const eMax=Math.max(1e-3,pct(eB,.99));
+  let sal=new Float32Array(G);
+  for(let y=0;y<GH;y++)for(let x=0;x<GW;x++){const i=y*GW+x;const dx=(x-GW/2)/(GW/2),dy=(y-GH/2)/(GH/2);
+    const glare=Math.max(0,(cg[i]-.78)/.22); // blown highlights read as light, not as a subject
+    sal[i]=(.55*Math.min(1,eB[i]/eMax)+.38*Math.min(1,ccB[i]/ccMax)+.07*Math.max(0,1-Math.hypot(dx,dy)/1.2))*(1-.7*Math.min(1,glare));}
+  sal=blur(sal,GW,GH,2);let smax=0;for(const v of sal)smax=Math.max(smax,v);for(let i=0;i<G;i++)sal[i]/=smax||1;
+  // components of salient cells
+  const thr=Math.max(.6,pct(sal,.9));const lab=new Int32Array(G).fill(-1);const comps=[];
+  for(let i=0;i<G;i++){if(sal[i]<thr||lab[i]>=0)continue;const q=[i];lab[i]=comps.length;const c={cells:[],sum:0,x0:GW,y0:GH,x1:0,y1:0,peak:i};
+    while(q.length){const k=q.pop();c.cells.push(k);c.sum+=sal[k];if(sal[k]>sal[c.peak])c.peak=k;const kx=k%GW,ky=(k/GW)|0;
+      c.x0=Math.min(c.x0,kx);c.y0=Math.min(c.y0,ky);c.x1=Math.max(c.x1,kx);c.y1=Math.max(c.y1,ky);
+      for(const[nx,ny]of[[kx+1,ky],[kx-1,ky],[kx,ky+1],[kx,ky-1]]){if(nx<0||ny<0||nx>=GW||ny>=GH)continue;const n=ny*GW+nx;if(lab[n]<0&&sal[n]>=thr){lab[n]=comps.length;q.push(n);}}}
+    comps.push(c);}
+  comps.sort((a,b)=>b.sum-a.sum);
+  const big=comps.filter(c=>c.cells.length>=G*.006);
+  const hero=big[0]||null;
+  const heroMask=new Float32Array(G);
+  if(hero){for(const k of hero.cells){const kx=k%GW,ky=(k/GW)|0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const nx=kx+dx,ny=ky+dy;if(nx>=0&&ny>=0&&nx<GW&&ny<GH)heroMask[ny*GW+nx]=1;}}}
+  // highlights
+  const hot=[];const hl=new Uint8Array(G);for(let i=0;i<G;i++)hl[i]=cg[i]>.82?1:0;
+  const seen=new Uint8Array(G);
+  for(let i=0;i<G;i++){if(!hl[i]||seen[i])continue;const q=[i];seen[i]=1;const b={x0:GW,y0:GH,x1:0,y1:0,n:0};
+    while(q.length){const k=q.pop();b.n++;const kx=k%GW,ky=(k/GW)|0;b.x0=Math.min(b.x0,kx);b.y0=Math.min(b.y0,ky);b.x1=Math.max(b.x1,kx);b.y1=Math.max(b.y1,ky);
+      for(const[nx,ny]of[[kx+1,ky],[kx-1,ky],[kx,ky+1],[kx,ky-1]]){if(nx<0||ny<0||nx>=GW||ny>=GH)continue;const n=ny*GW+nx;if(hl[n]&&!seen[n]){seen[n]=1;q.push(n);}}}
+    if(b.n>=G*.008)hot.push(b);}
+  let busyMean=0;for(const v of busyB)busyMean+=v;busyMean/=G;
+  return {busy:busyB,sal,hero,second:big[1]||null,comps:big,heroMask,hot,busyMean,
+    I:{busy:integ(busyB),sal:integ(sal),hero:integ(heroMask),lin:integ(cl),lin2:integ(cl2),g:integ(cg),g2:integ(cg2)}};
+}
+function stats(A,r){ // r in px
+  const x0=Math.max(0,Math.floor(r.x/U)),y0=Math.max(0,Math.floor(r.y/U)),x1=Math.min(GW,Math.ceil((r.x+r.w)/U)),y1=Math.min(GH,Math.ceil((r.y+r.h)/U));
+  const n=Math.max(1,(x1-x0)*(y1-y0));
+  const s=I=>(I[y1*(GW+1)+x1]-I[y0*(GW+1)+x1]-I[y1*(GW+1)+x0]+I[y0*(GW+1)+x0])/n;
+  const lin=s(A.I.lin),lin2=s(A.I.lin2),g=s(A.I.g),g2=s(A.I.g2);
+  const linSd=Math.sqrt(Math.max(0,lin2-lin*lin)),gSd=Math.sqrt(Math.max(0,g2-g*g));
+  return {busy:s(A.I.busy),sal:s(A.I.sal),hero:s(A.I.hero),lin,linSd,g,gSd};
+}
+function contrastFor(st){
+  const bright=Math.min(1,st.lin+1.1*st.linSd),dark=Math.max(0,st.lin-1.1*st.linSd);
+  const rW=(L_LIGHT+.05)/(bright+.05),rD=(dark+.05)/(L_DARK+.05);
+  if(rW>=4.5||rW>=rD&&rW>=3){return {color:"light",ratio:rW,scrim:rW>=4.5?0:scrimFor(bright)};}
+  if(rD>=4.5)return {color:"dark",ratio:rD,scrim:0};
+  return {color:"light",ratio:rW,scrim:scrimFor(bright)};
+}
+function scrimFor(bright){const target=(L_LIGHT+.05)/4.5-.05;return Math.min(.7,Math.max(.15,1-target/Math.max(bright,1e-3)));}
+const afterScrim=(st,a)=>(L_LIGHT+.05)/(Math.min(1,st.lin+1.1*st.linSd)*(1-a)+.05);
+
+/* ===================== text measurement ===================== */
+const mctx=mk(10,10).getContext("2d");
+function textW(t,font,ls=0){mctx.font=font;return mctx.measureText(t).width+ls*[...t].length;}
+function wrap(text,font,maxW,ls=0){
+  const out=[];
+  for(const para of text.split("/").map(s=>s.trim()).filter(Boolean)){
+    if(textW(para,font,ls)<=maxW){out.push(para);continue;}
+    const cjk=/[　-鿿＀-￯]/.test(para);
+    const toks=cjk?[...para]:para.split(/(\s+)/);let line="";
+    for(const t of toks){const tryL=line+t;if(textW(tryL.trim(),font,ls)>maxW&&line.trim()){out.push(line.trim());line=t.trimStart();}else line=tryL;}
+    if(line.trim())out.push(line.trim());
+  }
+  return out;
+}
+const fH=s=>`700 ${s}px ${FONT}`,fB=s=>`400 ${s}px ${FONT}`,fE=`600 24px ${FONT}`,fK=`600 28px ${FONT}`,fS=`400 24px ${FONT}`;
+const LS_E=24*.12;
+function measureBlock(cp,sz,maxW){
+  const hl=wrap(cp.h,fH(sz.h),maxW);if(hl.length>3)return null;
+  const bl=wrap(cp.body,fB(sz.b),maxW);if(bl.length>2)return null;
+  const el=cp.eyebrow?wrap(cp.eyebrow.toUpperCase(),fE,maxW,LS_E).slice(0,1):[];
+  const w=Math.max(...hl.map(t=>textW(t,fH(sz.h))),...bl.map(t=>textW(t,fB(sz.b))),...el.map(t=>textW(t,fE,LS_E)));
+  const eh=el.length?36+24:0;const h=eh+hl.length*sz.lh+(bl.length?36+bl.length*sz.blh:0);
+  return {hl,bl,el,w:Math.ceil(w),h,eh};
+}
+
+/* ===================== layout solver ===================== */
+const iou=(a,b)=>{const ix=Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)),iy=Math.max(0,Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y));const i=ix*iy;return i/(a.w*a.h+b.w*b.h-i);};
+const overlap=(a,b,p=0)=>a.x<b.x+b.w+p&&b.x<a.x+a.w+p&&a.y<b.y+b.h+p&&b.y<a.y+a.h+p;
+const pad=(r,p)=>({x:r.x-p,y:r.y-p,w:r.w+2*p,h:r.h+2*p});
+function subsLayout(cp){
+  const zl=wrap(cp.zh,`500 40px ${FONT}`,spanW(8)),el=wrap(cp.en,`500 28px ${FONT}`,spanW(8));
+  const h=zl.length*56+12+el.length*44;return {zl,el,rect:{x:colX(3),y:H-MT-h,w:spanW(8),h}};
+}
+function solve(){
+  const A=S.A,cp=S.copy;const subs=S.opt.subs?subsLayout(cp):null;
+  const limit=subs?subs.rect.y-36:H-MT;
+  const cands=[];
+  for(const span of [4,5,6,7])for(let si=0;si<SIZES.length;si++){
+    const sz=SIZES[si];const m=measureBlock(cp,sz,spanW(span));if(!m)continue;
+    for(let c=1;c<=13-span;c++){
+      const x0=colX(c),x1=colEnd(c+span-1),mid=(x0+x1)/2;
+      const aligns=[];if(c===1||mid<W/2-60)aligns.push("left");if(c+span-1===12||mid>W/2+60)aligns.push("right");if(2*c+span-1===13)aligns.push("center");
+      for(const al of aligns){
+        const rx=al==="left"?x0:al==="right"?x1-m.w:W/2-m.w/2;
+        for(let y=MT;y+m.h<=limit;y+=24){
+          const r={x:rx,y,w:m.w,h:m.h};const st=stats(A,pad(r,24));const ct=contrastFor(st);
+          const vc=(y+m.h/2)/H;
+          let prior=(vc>.38&&vc<.62?.12:0)+(al==="right"?.04:0)+(al==="center"?.08:0)+(c===1||c+span-1===12?-.04:0);
+          const pen=ct.ratio>=4.5?0:.25+ct.scrim*.9;
+          const score=2.2*st.sal+1.7*(st.busy/(A.busyMean+.05))*.5+3.2*st.hero+pen+1.2*st.gSd+prior-[0,.05,.09][si];
+          cands.push({score,span,c,al,sz,m,rect:r,st,ct,edge:al==="left"?x0:al==="right"?x1:W/2});
+        }
+      }
+    }
+  }
+  cands.sort((a,b)=>a.score-b.score);
+  const picks=[];
+  for(const k of cands){if(picks.every(p=>iou(p.rect,k.rect)<.12))picks.push(k);if(picks.length===3)break;}
+  S.variants=picks.map(p=>completeLayout(p,subs));
+  S.vi=0;
+}
+function completeLayout(p,subs){
+  const A=S.A,cp=S.copy;const L={main:p,subs:null,label:null,brand:null};
+  if(subs){const st=stats(A,pad(subs.rect,12));const bright=Math.min(1,st.lin+1.1*st.linSd);
+    const rW=(L_LIGHT+.05)/(bright+.05);L.subs={...subs,st,ratio:rW,scrim:rW>=4.5?0:Math.min(.6,scrimFor(bright))};}
+  const block=pad(p.rect,48);
+  // data label
+  if(S.opt.label&&A.comps.length){
+    const comp=A.comps.find(c=>{const k=c.peak;const px=(k%GW)*U+6,py=((k/GW)|0)*U+6;return !(px>block.x&&px<block.x+block.w&&py>block.y&&py<block.y+block.h)&&!(subs&&py>subs.rect.y);});
+    if(comp){
+      const ax=(comp.peak%GW)*U+6,ay=((comp.peak/GW)|0)*U+6;
+      const lw=Math.ceil(Math.max(textW(cp.k,fK),textW(cp.s,fS))),lh=72;let best=null;
+      for(let c=1;c<=12;c++)for(const al of["left","right"]){
+        const x=al==="left"?colX(c):colEnd(c)-lw;if(x<M||x+lw>W-M)continue;
+        if(al==="left"&&x<ax+24)continue;if(al==="right"&&x+lw>ax-24)continue;
+        for(let y=MT;y+lh<=(subs?subs.rect.y-24:H-MT);y+=U){
+          const r={x,y,w:lw,h:lh};if(overlap(r,p.rect,48))continue;
+          const dx=Math.max(r.x-ax,0,ax-(r.x+r.w)),dy=Math.max(r.y-ay,0,ay-(r.y+r.h)),dist=Math.hypot(dx,dy);if(dist<48||dist>520)continue;
+          const st=stats(A,pad(r,12));const ct=contrastFor(st);
+          const hb=A.hero&&overlap(r,{x:A.hero.x0*U,y:A.hero.y0*U,w:(A.hero.x1-A.hero.x0+1)*U,h:(A.hero.y1-A.hero.y0+1)*U})?1.2:0;
+          const sc=2*st.sal+.9*st.busy/(A.busyMean+.05)+3.5*st.hero+hb+(ct.ratio>=4.5?0:.3+ct.scrim)+dist/1400;
+          if(!best||sc<best.sc)best={sc,rect:r,al,st,ct,ax,ay,dist,comp};
+        }
+      }
+      L.label=best;
+    }
+  }
+  // brand mark: emptiest corner
+  const bw=Math.ceil(textW(cp.brand,`700 24px ${FONT}`,24*.24)),bh=36;
+  const corners=[{x:M,y:MT,al:"left"},{x:W-M-bw,y:MT,al:"right"},{x:M,y:H-MT-bh,al:"left"},{x:W-M-bw,y:H-MT-bh,al:"right"}];
+  let bb=null;for(const c of corners){const r={x:c.x,y:c.y,w:bw,h:bh};if(overlap(r,p.rect,36)||(L.subs&&overlap(r,L.subs.rect,24))||(L.label&&overlap(r,L.label.rect,24)))continue;
+    const st=stats(A,pad(r,12));const sc=st.sal*2+st.busy+st.hero*3;if(!bb||sc<bb.sc)bb={sc,rect:r,al:c.al,ct:contrastFor(st)};}
+  L.brand=bb;return L;
+}
+
+/* ===================== drawing ===================== */
+function setLS(x,v){if("letterSpacing" in x)x.letterSpacing=v+"px";}
+function scrimRect(x,r,a){if(a<=0)return;x.save();if("filter" in x)x.filter="blur(48px)";x.fillStyle=`rgba(0,0,0,${a})`;x.fillRect(r.x-60,r.y-48,r.w+120,r.h+96);x.restore();}
+function drawText(x,L){
+  const p=L.main,cp=S.copy,m=p.m,sz=p.sz;const light=p.ct.color==="light";
+  scrimRect(x,p.rect,p.ct.scrim);
+  const fill=light?TXT_LIGHT:TXT_DARK;x.textBaseline="middle";
+  const ax=p.al==="left"?p.rect.x:p.al==="right"?p.rect.x+p.rect.w:W/2;x.textAlign=p.al;
+  const shadow=()=>{x.shadowColor=light?"rgba(0,0,0,.45)":"rgba(255,255,255,.25)";x.shadowBlur=18;x.shadowOffsetY=2;};
+  shadow();let y=p.rect.y;
+  if(m.el.length){x.font=fE;setLS(x,LS_E);x.fillStyle=light?"#ecc996":"#6b4512";x.fillText(m.el[0],ax+(p.al==="right"?-LS_E:0),y+18);setLS(x,0);y+=36+24;}
+  x.font=fH(sz.h);x.fillStyle=fill;for(const t of m.hl){x.fillText(t,ax,y+sz.lh/2);y+=sz.lh;}
+  if(m.bl.length){y+=36;x.font=fB(sz.b);x.fillStyle=light?"rgba(246,241,232,.84)":"rgba(22,19,15,.84)";for(const t of m.bl){x.fillText(t,ax,y+sz.blh/2);y+=sz.blh;}}
+  // label
+  if(L.label){const l=L.label,lt=l.ct.color==="light";scrimRect(x,l.rect,l.ct.scrim);
+    const lx=l.al==="left"?l.rect.x:l.rect.x+l.rect.w;x.textAlign=l.al;
+    x.font=fK;x.fillStyle=lt?TXT_LIGHT:TXT_DARK;x.fillText(cp.k,lx,l.rect.y+18);
+    x.font=fS;x.fillStyle=lt?"rgba(246,241,232,.75)":"rgba(22,19,15,.75)";x.fillText(cp.s,lx,l.rect.y+54);
+    x.shadowBlur=6;const ey=l.rect.y+18,edge=l.al==="left"?l.rect.x-12:l.rect.x+l.rect.w+12,el=l.al==="left"?edge-36:edge+36;
+    x.strokeStyle=lt?"rgba(246,241,232,.9)":"rgba(22,19,15,.9)";x.lineWidth=2;x.beginPath();x.moveTo(l.ax,l.ay);x.lineTo(el,ey);x.lineTo(edge,ey);x.stroke();
+    x.fillStyle=x.strokeStyle;x.beginPath();x.arc(l.ax,l.ay,7,0,7);x.fill();}
+  // brand
+  if(L.brand){const b=L.brand;x.font=`700 24px ${FONT}`;setLS(x,24*.24);x.textAlign=b.al;x.fillStyle=b.ct.color==="light"?"rgba(246,241,232,.8)":"rgba(22,19,15,.8)";
+    x.fillText(cp.brand,b.al==="left"?b.rect.x:b.rect.x+b.rect.w+24*.24,b.rect.y+18);setLS(x,0);}
+  // subtitles
+  if(L.subs){const s=L.subs;x.shadowBlur=0;
+    if(s.scrim>0){x.fillStyle=`rgba(0,0,0,${s.scrim})`;roundRect(x,s.rect.x-24,s.rect.y-16,s.rect.w+48,s.rect.h+28,10);x.fill();}
+    x.shadowColor="rgba(0,0,0,.85)";x.shadowBlur=6;x.shadowOffsetY=2;x.textAlign="center";let y=s.rect.y;
+    x.font=`500 40px ${FONT}`;x.fillStyle="#fff";for(const t of s.zl){x.fillText(t,W/2,y+28);y+=56;}y+=12;
+    x.font=`500 28px ${FONT}`;x.fillStyle="#efe8dc";for(const t of s.el){x.fillText(t,W/2,y+22);y+=44;}}
+  x.shadowColor="transparent";x.shadowBlur=0;x.shadowOffsetY=0;x.textAlign="left";
+}
+function roundRect(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
+function mono(x,s,w=600){x.font=`${w} ${s}px ${MONO}`;}
+function label(x,t,px,py,col,al="left",bg=true){mono(x,18);x.textAlign=al;x.textBaseline="middle";
+  if(bg){const w=x.measureText(t).width;const bx=al==="left"?px-6:al==="right"?px-w-6:px-w/2-6;x.fillStyle="rgba(10,10,12,.62)";x.fillRect(bx,py-14,w+12,28);}
+  x.fillStyle=col;x.fillText(t,px,py);}
+function dim(x,x1,y1,x2,y2,t,lx,ly,al="center"){x.strokeStyle=C_CYAN;x.lineWidth=2;x.setLineDash([]);x.beginPath();x.moveTo(x1,y1);x.lineTo(x2,y2);
+  const v=x1===x2;for(const[a,b]of[[x1,y1],[x2,y2]]){if(v){x.moveTo(a-9,b);x.lineTo(a+9,b);}else{x.moveTo(a,b-9);x.lineTo(a,b+9);}}x.stroke();label(x,t,lx,ly,C_CYAN,al);}
+function tag(x,n,px,py,t,al="left"){px=Math.min(W-24,Math.max(24,px));py=Math.min(H-24,Math.max(24,py));
+  x.fillStyle=C_RED;x.beginPath();x.arc(px,py,17,0,7);x.fill();mono(x,17);x.fillStyle="#fff";x.textAlign="center";x.textBaseline="middle";x.fillText(n,px,py+1);
+  if(t)label(x,t,al==="left"?px+28:px-28,py,C_RED,al);}
+function dash(x,r,col,d=[14,10],w=3){x.strokeStyle=col;x.lineWidth=w;x.setLineDash(d);x.strokeRect(r.x,r.y,r.w,r.h);x.setLineDash([]);}
+function drawGrid(x){
+  x.fillStyle="rgba(53,208,255,.07)";for(let c=1;c<=12;c++)x.fillRect(colX(c),0,COL,H);
+  for(let c=1;c<=12;c++)label(x,String(c),colX(c)+COL/2,26,C_CYAN,"center",false);
+  x.strokeStyle="rgba(53,208,255,.7)";x.lineWidth=2;x.setLineDash([4,6]);x.strokeRect(M,MT,W-2*M,H-2*MT);x.setLineDash([]);
+}
+function drawHeat(x){const A=S.A;for(let i=0;i<GW*GH;i++){const v=A.sal[i];if(v<.25)continue;x.fillStyle=`rgba(255,59,107,${(v-.25)*.6})`;x.fillRect((i%GW)*U,((i/GW)|0)*U,U,U);}}
+function drawZones(x,L){
+  const A=S.A,t=T[lang];
+  if(A.hero){const h=A.hero,r={x:h.x0*U,y:h.y0*U,w:(h.x1-h.x0+1)*U,h:(h.y1-h.y0+1)*U};dash(x,r,C_AMBER);label(x,t.zone.hero,r.x+10,Math.min(H-30,r.y+r.h-22),C_AMBER);}
+  for(const b of A.hot){const r={x:b.x0*U,y:b.y0*U,w:(b.x1-b.x0+1)*U,h:(b.y1-b.y0+1)*U};dash(x,r,C_AMBER,[4,8],2);label(x,t.zone.hot,r.x+8,r.y+20,C_AMBER);}
+  const q=pad(L.main.rect,24);dash(x,q,C_GREEN,[10,8],2);
+  const qp=Math.round(100*(1-L.main.st.busy/(A.busyMean||1)));
+  const al=L.main.al==="right"?"right":"left";
+  label(x,`${t.zone.quiet} · ${qp>0?"−"+qp+"%":"+"+(-qp)+"%"} busy`,al==="left"?q.x+8:q.x+q.w-8,q.y+18,C_GREEN,al);
+}
+function drawNotes(x,L){
+  const t=T[lang],p=L.main,r=p.rect,m=p.m,sz=p.sz;
+  dim(x,0,62,M,62,"120",60,84);dim(x,W-M,62,W,62,"120",W-60,84);
+  dim(x,62,0,62,MT,"96",76,48,"left");dim(x,62,H-MT,62,H,"96",76,H-48,"left");
+  dim(x,colX(2),56,colEnd(2),56,"118",colX(2)+COL/2,84);dim(x,colEnd(2),56,colX(3),56,"24",colEnd(2)+12,84);
+  // aligned edge
+  x.strokeStyle=C_RED;x.lineWidth=3;x.beginPath();x.moveTo(p.edge,r.y-12);x.lineTo(p.edge,r.y+r.h+12);x.stroke();
+  const tagSide=p.al==="right"?"right":"left";
+  tag(x,3,p.edge,r.y-48,`${t.tag[3]} x=${Math.round(p.edge)}`,tagSide);
+  // brackets on the free side
+  const bx=p.al==="right"?r.x-24:r.x+r.w+24,dir=p.al==="right"?-1:1,bal=p.al==="right"?"right":"left";
+  let y=r.y;const segs=[];
+  if(m.el.length){segs.push([y,y+36,"24"]);y+=36;segs.push(["gap",y,y+24]);y+=24;}
+  segs.push([y,y+m.hl.length*sz.lh,`${sz.h}/${sz.lh}`]);y+=m.hl.length*sz.lh;
+  if(m.bl.length){segs.push(["gap",y,y+36]);y+=36;segs.push([y,y+m.bl.length*sz.blh,`${sz.b}/${sz.blh}`]);}
+  for(const s of segs){
+    if(s[0]==="gap"){dim(x,bx+dir*150,s[1],bx+dir*150,s[2],String(s[2]-s[1]),bx+dir*166,(s[1]+s[2])/2,bal);}
+    else{x.strokeStyle=C_RED;x.lineWidth=2;x.beginPath();x.moveTo(bx-dir*10,s[0]+3);x.lineTo(bx,s[0]+3);x.lineTo(bx,s[1]-3);x.lineTo(bx-dir*10,s[1]-3);x.stroke();
+      label(x,s[2],bx+dir*14,(s[0]+s[1])/2,C_RED,bal);}
+  }
+  tag(x,2,bx+dir*10,r.y-48+(r.w>420?0:-40),`${t.tag[2]} ${m.el.length?"24 / ":""}${sz.h} / ${sz.b}`,bal);
+  tag(x,4,bx+dir*150,r.y+r.h+28,t.tag[4],bal);
+  tag(x,1,p.edge,r.y+r.h+56,t.tag[1],tagSide);
+  // label
+  if(L.label){const l=L.label;tag(x,5,l.al==="left"?l.rect.x+l.rect.w+30:l.rect.x-30,l.rect.y+l.rect.h/2,`${t.tag[5]} · ${Math.round(l.dist)}px`,l.al==="left"?"left":"right");}
+  // subtitles
+  if(L.subs){const s=L.subs.rect;x.strokeStyle=C_RED;x.lineWidth=2;x.setLineDash([8,6]);x.strokeRect(s.x,s.y,s.w,s.h);x.setLineDash([]);
+    dim(x,s.x+s.w+24,s.y,s.x+s.w+24,s.y+s.h,String(s.h),s.x+s.w+40,s.y+s.h/2,"left");
+    tag(x,6,s.x+s.w,s.y-28,`${t.tag[6]} · ZH 40 / EN 28`,"right");}
+  // subject
+  if(S.A.hero){const h=S.A.hero;const cov=Math.round(100*p.st.hero);const right=(h.x1+1)*U>W*.6;
+    tag(x,7,right?(h.x1+1)*U-24:h.x0*U+24,h.y0*U+40,`${t.tag[7]} · ${cov}%`,right?"right":"left");}
+  // build order (principle 8)
+  const seq=`${t.tag[8]}: ${lang==="zh"?"标题":"head"} 0.0s → ${lang==="zh"?"正文":"body"} +0.3s${L.label?` → ${lang==="zh"?"标注":"label"} +1.5s`:""}${L.subs?` → ${lang==="zh"?"字幕随旁白":"subs w/ VO"}`:""}`;
+  if(L.label){const l=L.label;const al=l.al==="left"?"left":"right";tag(x,8,al==="left"?l.rect.x+12:l.rect.x+l.rect.w-12,l.rect.y-30,seq,al);}
+  else if(L.subs)tag(x,8,L.subs.rect.x+12,L.subs.rect.y-64,seq,"left");
+  else tag(x,8,p.edge,r.y+r.h+100,seq,tagSide);
+}
+function render(target=ctx,layers=S.layers){
+  const x=target;x.clearRect(0,0,W,H);x.drawImage(S.frame,0,0,W,H);
+  const L=S.variants[S.vi];if(!L)return;
+  if(layers.heat)drawHeat(x);
+  if(layers.grid)drawGrid(x);
+  if(layers.zones)drawZones(x,L);
+  if(layers.text)drawText(x,L);
+  if(layers.notes)drawNotes(x,L);
+}
+
+/* ===================== report ===================== */
+function readTime(cp){const zh=(cp.zh.match(/[一-鿿]/g)||[]).length,en=cp.en.split(/\s+/).length;
+  const hz=(cp.h+cp.body).match(/[一-鿿]/g),hw=(cp.h+" "+cp.body).split(/\s+/).length;
+  const head=hz&&hz.length>4?hz.length/5:hw/3;return {head:Math.max(2.5,Math.ceil((head+1)*2)/2),subs:Math.max(1.5,Math.ceil(Math.max(zh/6,en/3)*2)/2)};}
+function report(){
+  const t=T[lang],L=S.variants[S.vi],A=S.A,p=L.main,cp=S.copy;const cards=[];
+  const pos=v=>{const r=v.main.rect,cx=r.x+r.w/2,cy=r.y+r.h/2;return (cy<H*.38?t.pos.t:cy>H*.62?t.pos.b:t.pos.m)+(lang==="zh"?"":" ")+(cx<W*.4?t.pos.l:cx>W*.6?t.pos.r:t.pos.c);};
+  const quiet=Math.round(100*(1-p.st.busy/(A.busyMean||1)));
+  const zh=lang==="zh";
+  // 1
+  cards.push([quiet>=25&&p.st.hero<.1,
+    zh?`主标题块位于第 ${p.c}–${p.c+p.span-1} 栏，比全画面平均安静 ${quiet}%，与主体重叠 ${Math.round(p.st.hero*100)}%。`:`Headline block on columns ${p.c}–${p.c+p.span-1}: ${quiet}% quieter than the frame average, ${Math.round(p.st.hero*100)}% overlap with the subject.`,
+    `busy ${p.st.busy.toFixed(2)} / avg ${A.busyMean.toFixed(2)} · contrast ${p.ct.ratio.toFixed(1)}:1${p.ct.scrim?` → ${afterScrim(p.st,p.ct.scrim).toFixed(1)}:1 (scrim ${Math.round(p.ct.scrim*100)}%)`:""} · ${p.ct.color==="light"?(zh?"浅色字":"light text"):(zh?"深色字":"dark text")}`]);
+  // 2
+  const r1=(p.sz.h/p.sz.b).toFixed(1),r2=(p.sz.b/24).toFixed(1);
+  cards.push([r1>=2&&r2>=1.3,zh?`引题 24 / 主标题 ${p.sz.h} / 正文 ${p.sz.b}，每一级差距都清晰可见（原书第 45 页）。`:`Eyebrow 24 / headline ${p.sz.h} / body ${p.sz.b}. Each step is a visible jump (book p. 45).`,
+    `headline ÷ body = ${r1}× · body ÷ eyebrow = ${r2}× · line ${p.sz.lh}/${p.sz.blh}`]);
+  // 3
+  const edgeTxt=p.al==="left"?(zh?`左对齐于第 ${p.c} 栏起点`:`left edge = start of column ${p.c}`):p.al==="right"?(zh?`右对齐于第 ${p.c+p.span-1} 栏终点`:`right edge = end of column ${p.c+p.span-1}`):(zh?"居中于画面中轴":"centred on the frame axis");
+  cards.push([true,zh?`引题、主标题、正文共用同一条边：${edgeTxt}。`:`Eyebrow, headline and body share one edge: ${edgeTxt}.`,`x = ${Math.round(p.edge)} px · ${p.al}`]);
+  // 4
+  const ys=[p.rect.y,p.rect.y+(p.m.eh||0)];const okGrid=p.rect.y%U===0;
+  cards.push([okGrid,zh?"所有位置与间距都落在 12px 网格上：引题→标题 24，标题→正文 36，标注与字幕各自贴合基线。":"All positions and gaps sit on the 12-px grid: eyebrow→headline 24, headline→body 36; label and subtitles snap the same way.",
+    `top y = ${p.rect.y} (÷12 = ${p.rect.y/U}) · gaps 24 / 36`]);
+  // 5
+  if(L.label)cards.push([L.label.dist<=360&&L.label.st.hero<.15,zh?`标注放在第 ${Math.round((L.label.rect.x-M)/(COL+GUT))+1} 栏附近，用引导线连到画面中的第二视觉对象，距离 ${Math.round(L.label.dist)}px。`:`Label sits by column ${Math.round((L.label.rect.x-M)/(COL+GUT))+1} with a leader to the frame's secondary object, ${Math.round(L.label.dist)} px away.`,
+    `anchor (${L.label.ax}, ${L.label.ay}) · contrast ${L.label.ct.ratio.toFixed(1)}:1${L.label.ct.scrim?` · scrim ${Math.round(L.label.ct.scrim*100)}%`:""}`]);
+  else cards.push([true,zh?(S.opt.label?"没有找到适合标注的第二视觉对象，因此不放标注。":"数据标注已关闭。"):(S.opt.label?"No secondary object worth labelling was found, so no label is placed.":"Data label is off."),"—"]);
+  // 6
+  if(L.subs)cards.push([L.subs.ratio>=4.5||L.subs.scrim>0,zh?`中文在上、英文在下，居中于第 3–10 栏，底边贴 96px 边距。${L.subs.scrim?`背景偏亮，已加 ${Math.round(L.subs.scrim*100)}% 底衬。`:"背景够暗，无需底衬。"}`:`Chinese above English, centred on columns 3–10, sitting on the 96-px bottom margin. ${L.subs.scrim?`Background is bright, so a ${Math.round(L.subs.scrim*100)}% band is added.`:"Background is dark enough without a band."}`,
+    `zone y ${L.subs.rect.y}–${L.subs.rect.y+L.subs.rect.h} · raw contrast ${L.subs.ratio.toFixed(1)}:1`]);
+  else cards.push([true,zh?"字幕已关闭，标题可以使用到底部边距。":"Subtitles are off, so the headline may use the space down to the bottom margin.","—"]);
+  // 7
+  const typeArea=[p.rect,L.label&&L.label.rect,L.subs&&L.subs.rect].filter(Boolean).reduce((s,r)=>s+r.w*r.h,0);
+  cards.push([!A.hero||p.st.hero<.1,A.hero?(zh?`主体区约占画面 ${Math.round(100*A.hero.cells.length/(GW*GH))}%，主标题与它重叠 ${Math.round(p.st.hero*100)}%。文字只占画面 ${Math.round(100*typeArea/(W*H))}%。`:`The subject covers about ${Math.round(100*A.hero.cells.length/(GW*GH))}% of the frame and the headline overlaps it by ${Math.round(p.st.hero*100)}%. Type covers ${Math.round(100*typeArea/(W*H))}% of the frame.`):(zh?`未检出明显主体，保持文字面积约 ${Math.round(100*typeArea/(W*H))}%。`:`No clear subject found; type covers about ${Math.round(100*typeArea/(W*H))}% of the frame.`),
+    A.hero?`subject bbox ${A.hero.x0*U},${A.hero.y0*U} → ${(A.hero.x1+1)*U},${(A.hero.y1+1)*U}`:"—"]);
+  // 8
+  const rt=readTime(cp);
+  cards.push([true,zh?`主标题 0.0–0.6 秒进入，正文延后 0.3 秒，视线找到对象后约 1.5 秒出标注，字幕跟随旁白。主标题文字建议至少停留 ${rt.head} 秒，每条字幕约 ${rt.subs} 秒。`:`Headline in at 0.0–0.6 s, body +0.3 s, label at about 1.5 s once the eye finds the object, subtitles follow the VO. Hold the headline at least ${rt.head} s; each subtitle about ${rt.subs} s.`,
+    `0.0 → 0.3 → 1.5 s · hold ≥ ${rt.head}s`]);
+  $("report").innerHTML=cards.map(([ok,txt,m],i)=>`<div class="card"><h3><i>${i+1}</i>${esc(t.p[i])}<span class="pill ${ok?"ok":"warn"}">${ok?t.ok:t.warn}</span></h3><p>${esc(txt)}</p><div class="m">${esc(m)}</div></div>`).join("");
+  $("variants").innerHTML=S.variants.map((v,i)=>`<button data-v="${i}" aria-pressed="${i===S.vi}">${t.variant} ${"ABC"[i]} · ${pos(v)}<small>${v.main.sz.h}px · ${v.main.span} col · ${Math.round(100*(1-v.main.st.busy/(A.busyMean||1)))}% ${esc(t.quietPct)}</small></button>`).join("");
+  $("variants").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.vi=+b.dataset.v;redraw();});
+  const st=t.st;$("status").innerHTML=`<span>${st.src}: <b>${S.isSample?st.sample:esc(S.name||"")}</b>${S.cropped?" · "+st.crop:""}</span><span>${st.busy}: <b>${A.busyMean.toFixed(2)}</b></span><span>${st.subject}: <b>${A.hero?`${A.hero.x0*U}×${A.hero.y0*U} → ${(A.hero.x1+1)*U}×${(A.hero.y1+1)*U}`:st.none}</b></span>`;
+}
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ===================== flow ===================== */
+async function fonts(){const txt=Object.values(S.copy).join("")+"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  try{await Promise.all([400,500,600,700].map(w=>document.fonts.load(`${w} 40px "Noto Sans SC"`,txt)).concat([document.fonts.load(`600 18px "IBM Plex Mono"`,"0123456789")]));}catch(e){}}
+async function full(){await fonts();solve();redraw();}
+function redraw(){render();report();$("outbox").hidden=true;}
+function applyLang(){
+  const t=T[lang];document.documentElement.lang=lang==="zh"?"zh-CN":"en";
+  $("t-kicker").textContent=t.kicker;$("t-title").textContent=t.title;$("t-sub").textContent=t.sub;$("t-load").textContent=t.load;
+  $("shuffle").textContent=t.shuffle;$("sample").textContent=t.sample;$("t-optlabel").textContent=t.optlabel;$("t-optsubs").textContent=t.optsubs;
+  $("t-drop").textContent=t.drop;$("t-report").textContent=t.report;$("t-edit").textContent=t.edit;$("export").textContent=t.export;$("copyspec").textContent=t.copyspec;
+  $("t-save").textContent=t.save;$("t-foot").textContent=t.foot;
+  document.querySelectorAll("[data-layer]").forEach(b=>b.textContent=t.layers[b.dataset.layer]);
+  document.querySelectorAll("[data-f]").forEach(s=>s.textContent=t.f[s.dataset.f]);
+  $("lang-zh").setAttribute("aria-pressed",lang==="zh");$("lang-en").setAttribute("aria-pressed",lang==="en");
+}
+function setCopy(i){S.copyIdx=i;S.copy={...COPY[lang][i]};fillFields();}
+function fillFields(){for(const k of Object.keys(S.copy))if($("f-"+k))$("f-"+k).value=S.copy[k];}
+function setLang(l){lang=l;try{localStorage.setItem("flf-lang",l);}catch(e){}applyLang();setCopy(S.copyIdx);if(S.A)full();}
+function loadFrame(src,name){
+  const w=src.naturalWidth||src.width,h=src.naturalHeight||src.height;
+  const c=mk(W,H),x=c.getContext("2d");const s=Math.max(W/w,H/h);x.drawImage(src,(W-w*s)/2,(H-h*s)/2,w*s,h*s);
+  S.frame=c;S.isSample=!name;S.name=name;S.cropped=name?Math.abs(w/h-16/9)>.01:false;S.A=analyze(c);full();
+}
+function loadFile(f){if(!f||!f.type.startsWith("image/"))return;const url=URL.createObjectURL(f);const im=new Image();
+  im.onload=()=>{loadFrame(im,f.name);URL.revokeObjectURL(url);};im.src=url;}
+
+$("file").onchange=e=>loadFile(e.target.files[0]);
+const sb=$("stagebox");
+sb.addEventListener("dragover",e=>{e.preventDefault();sb.classList.add("over");});
+sb.addEventListener("dragleave",()=>sb.classList.remove("over"));
+sb.addEventListener("drop",e=>{e.preventDefault();sb.classList.remove("over");loadFile(e.dataTransfer.files[0]);});
+document.addEventListener("paste",e=>{const it=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith("image/"));if(it)loadFile(it.getAsFile());});
+$("shuffle").onclick=()=>{setCopy((S.copyIdx+1)%COPY[lang].length);full();};
+$("sample").onclick=()=>loadFrame(sampleFrame(),null);
+$("lang-zh").onclick=()=>setLang("zh");$("lang-en").onclick=()=>setLang("en");
+document.querySelectorAll("[data-layer]").forEach(b=>b.onclick=()=>{const k=b.dataset.layer;S.layers[k]=!S.layers[k];b.setAttribute("aria-pressed",S.layers[k]);render();});
+$("opt-label").onchange=e=>{S.opt.label=e.target.checked;full();};
+$("opt-subs").onchange=e=>{S.opt.subs=e.target.checked;full();};
+let ft;document.querySelectorAll(".fields input").forEach(inp=>inp.addEventListener("input",()=>{S.copy[inp.id.slice(2)]=inp.value;clearTimeout(ft);ft=setTimeout(full,250);}));
+$("export").onclick=()=>{render();$("out").src=cv.toDataURL("image/png");$("outbox").hidden=false;};
+$("copyspec").onclick=()=>{
+  const L=S.variants[S.vi],p=L.main;
+  const spec={canvas:[W,H],grid:{columns:12,margin:[M,MT],column:COL,gutter:GUT,unit:U},
+    headline:{align:p.al,columns:[p.c,p.c+p.span-1],x:Math.round(p.rect.x),y:p.rect.y,w:p.rect.w,h:p.rect.h,eyebrow:24,size:p.sz.h,lineHeight:p.sz.lh,body:p.sz.b,bodyLine:p.sz.blh,textColor:p.ct.color,contrast:+p.ct.ratio.toFixed(2),scrim:+p.ct.scrim.toFixed(2)},
+    label:L.label?{x:L.label.rect.x,y:L.label.rect.y,align:L.label.al,anchor:[L.label.ax,L.label.ay],sizes:[28,24]}:null,
+    subtitles:L.subs?{x:L.subs.rect.x,y:L.subs.rect.y,w:L.subs.rect.w,h:L.subs.rect.h,zh:40,en:28,scrim:+L.subs.scrim.toFixed(2)}:null,
+    brand:L.brand?{x:L.brand.rect.x,y:L.brand.rect.y,align:L.brand.al}:null,copy:S.copy};
+  const txt=JSON.stringify(spec,null,2);
+  navigator.clipboard.writeText(txt).then(()=>{$("copymsg").textContent=T[lang].copied;},()=>{$("copymsg").textContent=T[lang].copyfail;const pre=document.createElement("pre");pre.style.cssText="overflow-x:auto;font:12px var(--mono);background:var(--panel);padding:12px;border-radius:8px";pre.textContent=txt;$("copymsg").after(pre);});
+};
+
+applyLang();setCopy(Math.floor(Math.random()*COPY[lang].length));
+loadFrame(sampleFrame(),null);
+</script>
