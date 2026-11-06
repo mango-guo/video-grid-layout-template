@@ -18,9 +18,9 @@ A 16:9 (1920×1080) text-layout reference for video frames, built on the grid pr
 
 用法：直接用浏览器打开该文件，点击“载入照片”，或拖入、粘贴图片。
 
-**手动摆放 · Manual placement**：直接拖动主标题，或用方向键微调（↑↓ 12px，←→ 一栏，Shift ×4）。位置始终吸附栏线与 12px 网格，不越过边距、不压字幕区；可切换对齐（自动/左/中/右）、栏宽（3–8 栏）和字号（72/84/96）。开启严格模式时，违反原则 1 或 7（压主体、区域过杂、对比不足）的位置会自动吸附到最近的合规位置；实时徽标显示安静度、主体重叠和对比度。
+**手动摆放 · Manual placement**：直接拖动主标题，或用方向键微调（↑↓ 12px，←→ 一栏，Shift ×4）。位置始终吸附栏线与 12px 网格，不越过边距、不压字幕区；拖动边框四角或左右边的方块可直接缩放：栏宽吸附栏线，字号自动取能放进框内的最大一档（72/84/96/108/120，均落在 12px 网格上）；放不下文案时停在最窄可行的栏宽。也可切换对齐（自动/左/中/右）、栏宽（3–10 栏）和字号，或按 + / − 换字号。开启严格模式时，违反原则 1 或 7（压主体、区域过杂、对比不足）的位置会自动吸附到最近的合规位置；实时徽标显示安静度、主体重叠和对比度。
 
-Drag the headline or nudge it with the arrow keys. It always snaps to column edges and the 12-px grid, stays inside the margins and clear of the subtitle zone. Alignment, width (3–8 columns) and size (72/84/96) are adjustable. Strict mode moves any spot that breaks principle 1 or 7 to the nearest spot that passes; a live badge shows quietness, subject overlap and contrast.
+Drag the headline or nudge it with the arrow keys. It always snaps to column edges and the 12-px grid, stays inside the margins and clear of the subtitle zone. Drag a corner or side handle to resize: the width snaps to columns and the type takes the largest size that fits the box (72/84/96/108/120, all on the 12-px grid); if the copy can't fit, the width stops at the narrowest one that works. Alignment, width (3–10 columns) and size are also adjustable, and + / − step the size. Strict mode moves any spot that breaks principle 1 or 7 to the nearest spot that passes; a live badge shows quietness, subject overlap and contrast.
 
 | 原则 · Principle | 生成器如何执行 · How the finder applies it |
 |---|---|
