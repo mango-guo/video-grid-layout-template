@@ -36,7 +36,15 @@ h1 span{font:500 12px var(--mono);color:var(--accent);letter-spacing:.08em;displ
 .btn:focus-visible,.seg button:focus-visible,summary:focus-visible,input:focus-visible{outline:2px solid var(--dim);outline-offset:2px}
 .chk{display:inline-flex;gap:6px;align-items:center;font:500 13px var(--sans);color:var(--muted);cursor:pointer}
 .stagebox{position:relative;border-radius:6px;overflow:hidden;background:#000;max-width:100%}
-#cv{display:block;width:100%;height:auto;aspect-ratio:16/9}
+#cv{display:block;width:100%;height:auto;aspect-ratio:16/9;touch-action:none}
+#cv:focus-visible{outline:3px solid var(--dim);outline-offset:-3px}
+.manualbar{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:grid;gap:10px}
+.manualbar .hint{margin:0;color:var(--muted);font-size:13.5px}
+.manualbar .hint b{color:var(--fg);font-weight:600;margin-right:6px}
+.ctl{display:inline-flex;align-items:center;gap:8px;font:500 12px var(--mono);color:var(--muted)}
+.seg .val{display:inline-grid;place-items:center;min-width:56px;padding:0 8px;font:500 13px var(--mono);color:var(--fg);border-left:1px solid var(--line);border-right:1px solid var(--line)}
+.btn:disabled{opacity:.4;cursor:default}
+.toast{margin:0;min-height:1.4em;font:500 13px var(--sans);color:var(--warn)}
 .drop{position:absolute;inset:0;display:grid;place-items:center;background:rgba(214,39,74,.18);border:3px dashed var(--accent);color:#fff;font:600 18px var(--sans);opacity:0;pointer-events:none;transition:opacity .15s}
 .stagebox.over .drop{opacity:1}
 .status{font:500 12px var(--mono);color:var(--muted);display:flex;flex-wrap:wrap;gap:6px 16px}
@@ -88,12 +96,24 @@ h2{margin:6px 0 0;font:600 15px var(--sans)}
   </div>
 
   <div class="stagebox" id="stagebox">
-    <canvas id="cv" width="1920" height="1080"></canvas>
+    <canvas id="cv" width="1920" height="1080" tabindex="0" aria-label="Layout canvas"></canvas>
     <div class="drop" id="t-drop"></div>
   </div>
   <div class="status" id="status"></div>
 
   <div class="variants" id="variants"></div>
+
+  <div class="manualbar" role="group" aria-labelledby="t-manual">
+    <p class="hint"><b id="t-manual"></b> <span id="t-hint"></span></p>
+    <div class="tools">
+      <span class="ctl"><span id="t-align"></span><span class="seg"><button data-al="auto"></button><button data-al="left"></button><button data-al="center"></button><button data-al="right"></button></span></span>
+      <span class="ctl"><span id="t-span"></span><span class="seg"><button id="span-dec" aria-label="−">−</button><span class="val" id="spanv"></span><button id="span-inc" aria-label="+">+</button></span></span>
+      <span class="ctl"><span id="t-size"></span><span class="seg"><button data-si="0">72</button><button data-si="1">84</button><button data-si="2">96</button></span></span>
+      <label class="chk"><input type="checkbox" id="opt-strict" checked><span id="t-strict"></span></label>
+      <button class="btn" id="reset"></button>
+    </div>
+    <p class="toast" id="toast" role="status" aria-live="polite"></p>
+  </div>
 
   <h2 id="t-report"></h2>
   <div class="report" id="report"></div>
@@ -137,7 +157,13 @@ zh:{kicker:"1920 × 1080 · 12 栏网格",title:"画面排版生成器",
  zone:{hero:"主体区 · 保持留白",hot:"高亮区 · 白字对比不足",quiet:"安静区"},
  tag:{1:"文字放在安静区",2:"字号层级",3:"共用对齐边",4:"间距 12 的倍数",5:"标注贴近对象",6:"字幕独立区",7:"主体留白",8:"出现顺序"},
  p:[ "文字放在画面安静处","建立清晰的字号层级","共用一条对齐边","以 12px 为间距单位","标注与对象相连","字幕有独立区域","有意保留空白","按顺序出现、留足阅读时间"],
- ok:"达标",warn:"注意"},
+ ok:"达标",warn:"注意",
+ manual:"手动摆放",hint:"直接拖动画面中的主标题，或点一下画面后用方向键微调：↑↓ 每次 12px，←→ 每次一栏，按住 Shift 移动 4 倍。",
+ align:"对齐",al:{auto:"自动",left:"左",center:"中",right:"右"},span:"栏宽",size:"字号",
+ strict:"严格模式：违规时吸附到最近的合规位置",reset:"恢复自动方案",manualChip:"手动",
+ snapped:"放下的位置违反原则 1 或 7，已吸附到最近的合规位置。",nofit:"当前栏宽和字号下没有完全合规的位置，请调整栏宽或字号。",
+ nodir:"这个方向上没有合规位置，主标题保持不动。",edge:"已到网格边界。",nofitText:"这个栏宽放不下文案（主标题最多 3 行、正文最多 2 行）。",
+ live:{quiet:"安静",clear:"避开主体",contrast:"对比"}},
 en:{kicker:"1920 × 1080 · 12-col grid",title:"Frame Layout Finder",
  sub:"Load any photo and get the best text layout for it, checked against 8 grid principles. The photo is analyzed in your browser and never uploaded.",
  load:"Load photo",shuffle:"New copy",sample:"Sample frame",layers:{text:"Text",grid:"Grid",zones:"Zones",notes:"Redlines",heat:"Heatmap"},
@@ -150,7 +176,13 @@ en:{kicker:"1920 × 1080 · 12-col grid",title:"Frame Layout Finder",
  zone:{hero:"SUBJECT · keep clear",hot:"HIGHLIGHT · white text fails",quiet:"QUIET ZONE"},
  tag:{1:"text on quiet area",2:"type scale",3:"shared edge",4:"spacing ×12",5:"label tied to object",6:"subtitle zone",7:"subject kept clear",8:"build order"},
  p:["Text sits where the frame is quiet","Clear type hierarchy","One shared alignment edge","Spacing in 12-px steps","Label tied to its object","Subtitles get their own zone","Empty space on purpose","Staged build, enough reading time"],
- ok:"pass",warn:"check"}};
+ ok:"pass",warn:"check",
+ manual:"Manual placement",hint:"Drag the headline on the frame, or click the frame and use the arrow keys: ↑↓ move 12 px, ←→ move one column, hold Shift for 4×.",
+ align:"Align",al:{auto:"Auto",left:"Left",center:"Centre",right:"Right"},span:"Width",size:"Size",
+ strict:"Strict mode: snap to the nearest spot that passes",reset:"Back to auto options",manualChip:"Manual",
+ snapped:"That spot broke principle 1 or 7, so the headline snapped to the nearest spot that passes.",nofit:"No spot fully passes at this width and size. Try another width or size.",
+ nodir:"No passing spot in that direction, so the headline stays put.",edge:"At the edge of the grid.",nofitText:"The copy doesn't fit this width (max 3 headline lines, 2 body lines).",
+ live:{quiet:"quiet",clear:"subject clear",contrast:"contrast"}}};
 
 const COPY={
 zh:[
@@ -177,7 +209,8 @@ const TXT_LIGHT="#f6f1e8",TXT_DARK="#16130f",L_LIGHT=0.88,L_DARK=0.0065;
 let lang=(navigator.language||"").toLowerCase().startsWith("zh")?"zh":"en";
 try{const s=localStorage.getItem("flf-lang");if(s)lang=s;}catch(e){}
 const S={frame:null,isSample:true,cropped:false,A:null,copy:null,copyIdx:0,variants:[],vi:0,
-  layers:{text:true,grid:true,zones:true,notes:true,heat:false},opt:{label:true,subs:true}};
+  layers:{text:true,grid:true,zones:true,notes:true,heat:false},opt:{label:true,subs:true},
+  manual:null,manualL:null,alMode:"auto",strict:true};
 const $=id=>document.getElementById(id);
 const cv=$("cv"),ctx=cv.getContext("2d");
 const mk=(w,h)=>{const c=document.createElement("canvas");c.width=w;c.height=h;return c;};
@@ -289,7 +322,7 @@ function contrastFor(st){
   if(rD>=4.5)return {color:"dark",ratio:rD,scrim:0};
   return {color:"light",ratio:rW,scrim:scrimFor(bright)};
 }
-function scrimFor(bright){const target=(L_LIGHT+.05)/4.5-.05;return Math.min(.7,Math.max(.15,1-target/Math.max(bright,1e-3)));}
+function scrimFor(bright){const target=(L_LIGHT+.05)/4.6-.05;return Math.min(.7,Math.max(.15,1-target/Math.max(bright,1e-3)));}
 const afterScrim=(st,a)=>(L_LIGHT+.05)/(Math.min(1,st.lin+1.1*st.linSd)*(1-a)+.05);
 
 /* ===================== text measurement ===================== */
@@ -325,34 +358,89 @@ function subsLayout(cp){
   const zl=wrap(cp.zh,`500 40px ${FONT}`,spanW(8)),el=wrap(cp.en,`500 28px ${FONT}`,spanW(8));
   const h=zl.length*56+12+el.length*44;return {zl,el,rect:{x:colX(3),y:H-MT-h,w:spanW(8),h}};
 }
+const textLimit=()=>S.opt.subs?subsLayout(S.copy).rect.y-36:H-MT;
+/* one headline placement on the grid: span columns starting at column c, aligned left/right/center, top at y */
+function makeCand(span,si,c,al,y,m){
+  const A=S.A,sz=SIZES[si];m=m||measureBlock(S.copy,sz,spanW(span));if(!m)return null;
+  const x0=colX(c),x1=colEnd(c+span-1);
+  const rx=al==="left"?x0:al==="right"?x1-m.w:W/2-m.w/2;
+  const r={x:rx,y,w:m.w,h:m.h};const st=stats(A,pad(r,24));const ct=contrastFor(st);
+  const vc=(y+m.h/2)/H;
+  const prior=(vc>.38&&vc<.62?.12:0)+(al==="right"?.04:0)+(al==="center"?.08:0)+(c===1||c+span-1===12?-.04:0);
+  const pen=ct.ratio>=4.5?0:.25+ct.scrim*.9;
+  const score=2.2*st.sal+1.7*(st.busy/(A.busyMean+.05))*.5+3.2*st.hero+pen+1.2*st.gSd+prior-[0,.05,.09][si];
+  return {score,span,si,c,al,y,sz,m,rect:r,st,ct,edge:al==="left"?x0:al==="right"?x1:W/2};
+}
 function solve(){
-  const A=S.A,cp=S.copy;const subs=S.opt.subs?subsLayout(cp):null;
-  const limit=subs?subs.rect.y-36:H-MT;
+  const cp=S.copy;const subs=S.opt.subs?subsLayout(cp):null;
+  const limit=textLimit();
   const cands=[];
   for(const span of [4,5,6,7])for(let si=0;si<SIZES.length;si++){
-    const sz=SIZES[si];const m=measureBlock(cp,sz,spanW(span));if(!m)continue;
+    const m=measureBlock(cp,SIZES[si],spanW(span));if(!m)continue;
     for(let c=1;c<=13-span;c++){
-      const x0=colX(c),x1=colEnd(c+span-1),mid=(x0+x1)/2;
+      const mid=(colX(c)+colEnd(c+span-1))/2;
       const aligns=[];if(c===1||mid<W/2-60)aligns.push("left");if(c+span-1===12||mid>W/2+60)aligns.push("right");if(2*c+span-1===13)aligns.push("center");
-      for(const al of aligns){
-        const rx=al==="left"?x0:al==="right"?x1-m.w:W/2-m.w/2;
-        for(let y=MT;y+m.h<=limit;y+=24){
-          const r={x:rx,y,w:m.w,h:m.h};const st=stats(A,pad(r,24));const ct=contrastFor(st);
-          const vc=(y+m.h/2)/H;
-          let prior=(vc>.38&&vc<.62?.12:0)+(al==="right"?.04:0)+(al==="center"?.08:0)+(c===1||c+span-1===12?-.04:0);
-          const pen=ct.ratio>=4.5?0:.25+ct.scrim*.9;
-          const score=2.2*st.sal+1.7*(st.busy/(A.busyMean+.05))*.5+3.2*st.hero+pen+1.2*st.gSd+prior-[0,.05,.09][si];
-          cands.push({score,span,c,al,sz,m,rect:r,st,ct,edge:al==="left"?x0:al==="right"?x1:W/2});
-        }
-      }
+      for(const al of aligns)for(let y=MT;y+m.h<=limit;y+=24)cands.push(makeCand(span,si,c,al,y,m));
     }
   }
   cands.sort((a,b)=>a.score-b.score);
   const picks=[];
   for(const k of cands){if(picks.every(p=>iou(p.rect,k.rect)<.12))picks.push(k);if(picks.length===3)break;}
   S.variants=picks.map(p=>completeLayout(p,subs));
-  S.vi=0;
+  S.vi=Math.min(S.vi,S.variants.length-1);
 }
+
+/* ===================== manual placement ===================== */
+const cur=()=>S.manual?S.manualL:S.variants[S.vi];
+/* hard rules every manual position obeys: on a column edge (3), 12-px grid (4), inside margins, above the subtitle zone (6) */
+function placeOnGrid(span,si,al,x,y){
+  const m=measureBlock(S.copy,SIZES[si],spanW(span));if(!m)return null;
+  if(al==="center"&&(13-span)%2)al=x+m.w/2<W/2?"left":"right";
+  let c;
+  if(al==="left")c=Math.round((x-M)/(COL+GUT))+1;
+  else if(al==="right")c=Math.round((x+m.w-M-COL)/(COL+GUT))+1-span+1;
+  else c=(13-span)/2;
+  c=Math.max(1,Math.min(13-span,c));
+  const lim=textLimit();y=Math.round(y/U)*U;y=Math.max(MT,Math.min(Math.floor((lim-m.h)/U)*U,y));
+  if(y<MT)return null;
+  return makeCand(span,si,c,al,y,m);
+}
+/* soft rules checked live: quiet area (1), subject kept clear (7), readable contrast (1) */
+function check(p){
+  const A=S.A;const quiet=p.st.busy<=A.busyMean;const clear=p.st.hero<=.1;
+  const contrast=p.ct.ratio>=4.5||(p.ct.scrim>0&&afterScrim(p.st,p.ct.scrim)>=4.5);
+  return {quiet,clear,contrast,ok:quiet&&clear&&contrast};
+}
+function nearestCompliant(p,dir){
+  let best=null;const lim=textLimit();
+  for(let c=1;c<=13-p.span;c++)for(const al of ["left","right","center"]){
+    if(al==="center"&&c!==(13-p.span)/2)continue;
+    if(S.alMode!=="auto"&&al!==S.alMode)continue;
+    for(let y=MT;y+p.m.h<=lim;y+=U){
+      const k=makeCand(p.span,p.si,c,al,y,p.m);if(!check(k).ok)continue;
+      const dx=k.rect.x-p.rect.x,dy=k.rect.y-p.rect.y;
+      if(dir&&(dx*dir[0]<0||dy*dir[1]<0||(dir[0]&&!dx)||(dir[1]&&!dy)))continue;
+      const d=Math.hypot(dx,dy);if(!best||d<best.d)best={d,k};
+    }
+  }
+  return best&&best.k;
+}
+function applyManual(p){
+  S.manual={span:p.span,si:p.si,al:p.al,x:p.rect.x,y:p.rect.y};
+  S.manualL=completeLayout(p,S.opt.subs?subsLayout(S.copy):null);
+}
+function commit(p,dir){
+  if(!p)return;let msg="";
+  if(S.strict&&!check(p).ok){
+    const n=nearestCompliant(p,dir);
+    if(n){p=n;msg=T[lang].snapped;}
+    else if(dir&&(dir[0]||dir[1])){toast(T[lang].nodir);render();report();return;}
+    else msg=T[lang].nofit;
+  }
+  applyManual(p);render();report();toast(msg);
+}
+function toast(m){const el=$("toast");el.textContent=m||"";}
+function startManualFrom(){const p=cur().main;if(!S.manual)S.manual={span:p.span,si:p.si,al:p.al,x:p.rect.x,y:p.rect.y};return S.manual;}
 function completeLayout(p,subs){
   const A=S.A,cp=S.copy;const L={main:p,subs:null,label:null,brand:null};
   if(subs){const st=stats(A,pad(subs.rect,12));const bright=Math.min(1,st.lin+1.1*st.linSd);
@@ -483,14 +571,28 @@ function drawNotes(x,L){
   else if(L.subs)tag(x,8,L.subs.rect.x+12,L.subs.rect.y-64,seq,"left");
   else tag(x,8,p.edge,r.y+r.h+100,seq,tagSide);
 }
-function render(target=ctx,layers=S.layers){
+function drawLive(x,L){
+  const p=L.main,ch=check(p),t=T[lang].live,r=pad(p.rect,16);
+  const col=ch.ok?C_GREEN:C_RED;x.strokeStyle=col;x.lineWidth=3;x.setLineDash(drag?[]:[12,8]);x.strokeRect(r.x,r.y,r.w,r.h);x.setLineDash([]);
+  x.fillStyle=col;for(const[a,b]of[[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]])x.fillRect(a-6,b-6,12,12);
+  const q=Math.round(100*(1-p.st.busy/(S.A.busyMean||1)));
+  const ratio=p.ct.scrim?afterScrim(p.st,p.ct.scrim):p.ct.ratio;
+  const txt=`${ch.quiet?"✓":"✗"} ${t.quiet} ${q>=0?q:"−"+(-q)}%   ${ch.clear?"✓":"✗"} ${t.clear} ${Math.round(p.st.hero*100)}%   ${ch.contrast?"✓":"✗"} ${t.contrast} ${ratio.toFixed(1)}:1   · ${p.al} · col ${p.c}–${p.c+p.span-1} · y ${p.rect.y}`;
+  mono(x,19);const w=x.measureText(txt).width+24;let bx=p.al==="right"?r.x+r.w-w:p.al==="center"?W/2-w/2:r.x;bx=Math.max(8,Math.min(W-w-8,bx));
+  const by=r.y-46<8?r.y+r.h+10:r.y-46;
+  x.fillStyle="rgba(10,10,12,.82)";roundRect(x,bx,by,w,36,6);x.fill();x.strokeStyle=col;x.lineWidth=2;x.stroke();
+  x.fillStyle="#fff";x.textAlign="left";x.textBaseline="middle";x.fillText(txt,bx+12,by+19);
+}
+let raf=0;const scheduleRender=()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;render();});};
+function render(target=ctx,layers=S.layers,live=true){
   const x=target;x.clearRect(0,0,W,H);x.drawImage(S.frame,0,0,W,H);
-  const L=S.variants[S.vi];if(!L)return;
+  const L=cur();if(!L)return;
   if(layers.heat)drawHeat(x);
   if(layers.grid)drawGrid(x);
   if(layers.zones)drawZones(x,L);
   if(layers.text)drawText(x,L);
-  if(layers.notes)drawNotes(x,L);
+  if(layers.notes&&!drag)drawNotes(x,L);
+  if(live&&S.manual&&layers.text)drawLive(x,L);
 }
 
 /* ===================== report ===================== */
@@ -498,12 +600,13 @@ function readTime(cp){const zh=(cp.zh.match(/[一-鿿]/g)||[]).length,en=cp.en.s
   const hz=(cp.h+cp.body).match(/[一-鿿]/g),hw=(cp.h+" "+cp.body).split(/\s+/).length;
   const head=hz&&hz.length>4?hz.length/5:hw/3;return {head:Math.max(2.5,Math.ceil((head+1)*2)/2),subs:Math.max(1.5,Math.ceil(Math.max(zh/6,en/3)*2)/2)};}
 function report(){
-  const t=T[lang],L=S.variants[S.vi],A=S.A,p=L.main,cp=S.copy;const cards=[];
+  const t=T[lang],L=cur(),A=S.A,p=L.main,cp=S.copy;const cards=[];
   const pos=v=>{const r=v.main.rect,cx=r.x+r.w/2,cy=r.y+r.h/2;return (cy<H*.38?t.pos.t:cy>H*.62?t.pos.b:t.pos.m)+(lang==="zh"?"":" ")+(cx<W*.4?t.pos.l:cx>W*.6?t.pos.r:t.pos.c);};
   const quiet=Math.round(100*(1-p.st.busy/(A.busyMean||1)));
   const zh=lang==="zh";
   // 1
-  cards.push([quiet>=25&&p.st.hero<.1,
+  const ch=check(p);
+  cards.push([ch.quiet&&ch.contrast,
     zh?`主标题块位于第 ${p.c}–${p.c+p.span-1} 栏，比全画面平均安静 ${quiet}%，与主体重叠 ${Math.round(p.st.hero*100)}%。`:`Headline block on columns ${p.c}–${p.c+p.span-1}: ${quiet}% quieter than the frame average, ${Math.round(p.st.hero*100)}% overlap with the subject.`,
     `busy ${p.st.busy.toFixed(2)} / avg ${A.busyMean.toFixed(2)} · contrast ${p.ct.ratio.toFixed(1)}:1${p.ct.scrim?` → ${afterScrim(p.st,p.ct.scrim).toFixed(1)}:1 (scrim ${Math.round(p.ct.scrim*100)}%)`:""} · ${p.ct.color==="light"?(zh?"浅色字":"light text"):(zh?"深色字":"dark text")}`]);
   // 2
@@ -527,15 +630,17 @@ function report(){
   else cards.push([true,zh?"字幕已关闭，标题可以使用到底部边距。":"Subtitles are off, so the headline may use the space down to the bottom margin.","—"]);
   // 7
   const typeArea=[p.rect,L.label&&L.label.rect,L.subs&&L.subs.rect].filter(Boolean).reduce((s,r)=>s+r.w*r.h,0);
-  cards.push([!A.hero||p.st.hero<.1,A.hero?(zh?`主体区约占画面 ${Math.round(100*A.hero.cells.length/(GW*GH))}%，主标题与它重叠 ${Math.round(p.st.hero*100)}%。文字只占画面 ${Math.round(100*typeArea/(W*H))}%。`:`The subject covers about ${Math.round(100*A.hero.cells.length/(GW*GH))}% of the frame and the headline overlaps it by ${Math.round(p.st.hero*100)}%. Type covers ${Math.round(100*typeArea/(W*H))}% of the frame.`):(zh?`未检出明显主体，保持文字面积约 ${Math.round(100*typeArea/(W*H))}%。`:`No clear subject found; type covers about ${Math.round(100*typeArea/(W*H))}% of the frame.`),
+  cards.push([ch.clear,A.hero?(zh?`主体区约占画面 ${Math.round(100*A.hero.cells.length/(GW*GH))}%，主标题与它重叠 ${Math.round(p.st.hero*100)}%。文字只占画面 ${Math.round(100*typeArea/(W*H))}%。`:`The subject covers about ${Math.round(100*A.hero.cells.length/(GW*GH))}% of the frame and the headline overlaps it by ${Math.round(p.st.hero*100)}%. Type covers ${Math.round(100*typeArea/(W*H))}% of the frame.`):(zh?`未检出明显主体，保持文字面积约 ${Math.round(100*typeArea/(W*H))}%。`:`No clear subject found; type covers about ${Math.round(100*typeArea/(W*H))}% of the frame.`),
     A.hero?`subject bbox ${A.hero.x0*U},${A.hero.y0*U} → ${(A.hero.x1+1)*U},${(A.hero.y1+1)*U}`:"—"]);
   // 8
   const rt=readTime(cp);
   cards.push([true,zh?`主标题 0.0–0.6 秒进入，正文延后 0.3 秒，视线找到对象后约 1.5 秒出标注，字幕跟随旁白。主标题文字建议至少停留 ${rt.head} 秒，每条字幕约 ${rt.subs} 秒。`:`Headline in at 0.0–0.6 s, body +0.3 s, label at about 1.5 s once the eye finds the object, subtitles follow the VO. Hold the headline at least ${rt.head} s; each subtitle about ${rt.subs} s.`,
     `0.0 → 0.3 → 1.5 s · hold ≥ ${rt.head}s`]);
   $("report").innerHTML=cards.map(([ok,txt,m],i)=>`<div class="card"><h3><i>${i+1}</i>${esc(t.p[i])}<span class="pill ${ok?"ok":"warn"}">${ok?t.ok:t.warn}</span></h3><p>${esc(txt)}</p><div class="m">${esc(m)}</div></div>`).join("");
-  $("variants").innerHTML=S.variants.map((v,i)=>`<button data-v="${i}" aria-pressed="${i===S.vi}">${t.variant} ${"ABC"[i]} · ${pos(v)}<small>${v.main.sz.h}px · ${v.main.span} col · ${Math.round(100*(1-v.main.st.busy/(A.busyMean||1)))}% ${esc(t.quietPct)}</small></button>`).join("");
-  $("variants").querySelectorAll("button").forEach(b=>b.onclick=()=>{S.vi=+b.dataset.v;redraw();});
+  const vb=(v,label,i)=>`<button data-v="${i}" aria-pressed="${S.manual?i<0:i===S.vi}">${label} · ${pos(v)}<small>${v.main.sz.h}px · ${v.main.span} col · ${Math.round(100*(1-v.main.st.busy/(A.busyMean||1)))}% ${esc(t.quietPct)}</small></button>`;
+  $("variants").innerHTML=S.variants.map((v,i)=>vb(v,`${t.variant} ${"ABC"[i]}`,i)).join("")+(S.manual?vb(S.manualL,`✋ ${t.manualChip}${check(p).ok?" ✓":" ✗"}`,-1):"");
+  $("variants").querySelectorAll("button").forEach(b=>b.onclick=()=>{const i=+b.dataset.v;if(i<0)return;S.manual=null;S.vi=i;toast("");redraw();});
+  updateManualUI();
   const st=t.st;$("status").innerHTML=`<span>${st.src}: <b>${S.isSample?st.sample:esc(S.name||"")}</b>${S.cropped?" · "+st.crop:""}</span><span>${st.busy}: <b>${A.busyMean.toFixed(2)}</b></span><span>${st.subject}: <b>${A.hero?`${A.hero.x0*U}×${A.hero.y0*U} → ${(A.hero.x1+1)*U}×${(A.hero.y1+1)*U}`:st.none}</b></span>`;
 }
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -543,7 +648,9 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",
 /* ===================== flow ===================== */
 async function fonts(){const txt=Object.values(S.copy).join("")+"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   try{await Promise.all([400,500,600,700].map(w=>document.fonts.load(`${w} 40px "Noto Sans SC"`,txt)).concat([document.fonts.load(`600 18px "IBM Plex Mono"`,"0123456789")]));}catch(e){}}
-async function full(){await fonts();solve();redraw();}
+async function full(){await fonts();solve();
+  if(S.manual){const m=S.manual;const p=placeOnGrid(m.span,m.si,m.al,m.x,m.y);if(p)applyManual(p);else S.manual=null;}
+  redraw();}
 function redraw(){render();report();$("outbox").hidden=true;}
 function applyLang(){
   const t=T[lang];document.documentElement.lang=lang==="zh"?"zh-CN":"en";
@@ -551,6 +658,8 @@ function applyLang(){
   $("shuffle").textContent=t.shuffle;$("sample").textContent=t.sample;$("t-optlabel").textContent=t.optlabel;$("t-optsubs").textContent=t.optsubs;
   $("t-drop").textContent=t.drop;$("t-report").textContent=t.report;$("t-edit").textContent=t.edit;$("export").textContent=t.export;$("copyspec").textContent=t.copyspec;
   $("t-save").textContent=t.save;$("t-foot").textContent=t.foot;
+  $("t-manual").textContent=t.manual;$("t-hint").textContent=t.hint;$("t-align").textContent=t.align;$("t-span").textContent=t.span;$("t-size").textContent=t.size;
+  $("t-strict").textContent=t.strict;$("reset").textContent=t.reset;document.querySelectorAll("[data-al]").forEach(b=>b.textContent=t.al[b.dataset.al]);
   document.querySelectorAll("[data-layer]").forEach(b=>b.textContent=t.layers[b.dataset.layer]);
   document.querySelectorAll("[data-f]").forEach(s=>s.textContent=t.f[s.dataset.f]);
   $("lang-zh").setAttribute("aria-pressed",lang==="zh");$("lang-en").setAttribute("aria-pressed",lang==="en");
@@ -561,7 +670,7 @@ function setLang(l){lang=l;try{localStorage.setItem("flf-lang",l);}catch(e){}app
 function loadFrame(src,name){
   const w=src.naturalWidth||src.width,h=src.naturalHeight||src.height;
   const c=mk(W,H),x=c.getContext("2d");const s=Math.max(W/w,H/h);x.drawImage(src,(W-w*s)/2,(H-h*s)/2,w*s,h*s);
-  S.frame=c;S.isSample=!name;S.name=name;S.cropped=name?Math.abs(w/h-16/9)>.01:false;S.A=analyze(c);full();
+  S.frame=c;S.isSample=!name;S.name=name;S.cropped=name?Math.abs(w/h-16/9)>.01:false;S.A=analyze(c);S.manual=null;S.vi=0;toast("");full();
 }
 function loadFile(f){if(!f||!f.type.startsWith("image/"))return;const url=URL.createObjectURL(f);const im=new Image();
   im.onload=()=>{loadFrame(im,f.name);URL.revokeObjectURL(url);};im.src=url;}
@@ -579,9 +688,52 @@ document.querySelectorAll("[data-layer]").forEach(b=>b.onclick=()=>{const k=b.da
 $("opt-label").onchange=e=>{S.opt.label=e.target.checked;full();};
 $("opt-subs").onchange=e=>{S.opt.subs=e.target.checked;full();};
 let ft;document.querySelectorAll(".fields input").forEach(inp=>inp.addEventListener("input",()=>{S.copy[inp.id.slice(2)]=inp.value;clearTimeout(ft);ft=setTimeout(full,250);}));
-$("export").onclick=()=>{render();$("out").src=cv.toDataURL("image/png");$("outbox").hidden=false;};
+$("export").onclick=()=>{render(ctx,S.layers,false);$("out").src=cv.toDataURL("image/png");render();$("outbox").hidden=false;};
+
+/* ---- manual placement: drag, keys, controls ---- */
+let drag=null;
+const toCanvas=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height];};
+const hit=(px,py)=>{const L=cur();if(!L||!S.layers.text)return false;const r=pad(L.main.rect,24);return px>=r.x&&px<=r.x+r.w&&py>=r.y&&py<=r.y+r.h;};
+const autoAl=(x,w,span)=>{const cx=x+w/2;return Math.abs(cx-W/2)<80&&(13-span)%2===0?"center":cx<W/2?"left":"right";};
+cv.addEventListener("pointerdown",e=>{const[px,py]=toCanvas(e);if(!hit(px,py))return;e.preventDefault();cv.focus({preventScroll:true});
+  try{cv.setPointerCapture(e.pointerId);}catch(_){}
+  const p=cur().main;startManualFrom();drag={px,py,x:p.rect.x,y:p.rect.y,w:p.rect.w};cv.style.cursor="grabbing";toast("");scheduleRender();});
+cv.addEventListener("pointermove",e=>{const[px,py]=toCanvas(e);if(!drag){cv.style.cursor=hit(px,py)?"grab":"default";return;}
+  const m=S.manual,x=drag.x+px-drag.px,y=drag.y+py-drag.py;
+  const al=S.alMode==="auto"?autoAl(x,drag.w,m.span):S.alMode;
+  const p=placeOnGrid(m.span,m.si,al,x,y);if(p){applyManual(p);scheduleRender();}});
+const endDrag=()=>{if(!drag)return;drag=null;cv.style.cursor="grab";commit(cur().main);};
+cv.addEventListener("pointerup",endDrag);cv.addEventListener("pointercancel",endDrag);
+cv.addEventListener("keydown",e=>{const k=e.key;if(!k.startsWith("Arrow"))return;e.preventDefault();
+  const p0=cur().main;startManualFrom();const n=e.shiftKey?4:1;
+  const dx=k==="ArrowLeft"?-(COL+GUT)*n:k==="ArrowRight"?(COL+GUT)*n:0,dy=k==="ArrowUp"?-U*n:k==="ArrowDown"?U*n:0;
+  let al=S.alMode==="auto"?(dx?autoAl(p0.rect.x+dx,p0.rect.w,p0.span):p0.al):S.alMode;if(al==="center"&&dx)al=dx<0?"left":"right";
+  const p=placeOnGrid(p0.span,p0.si,al,p0.rect.x+dx,p0.rect.y+dy);
+  if(p&&p.rect.x===p0.rect.x&&p.rect.y===p0.rect.y&&p.al===p0.al){toast(T[lang].edge);return;}
+  commit(p,[Math.sign(dx),Math.sign(dy)]);});
+function reshape(span,si,al){
+  const p0=cur().main;startManualFrom();span=Math.max(3,Math.min(8,span));
+  if(al==="center"&&(13-span)%2)span=span<8?span+1:span-1;
+  const a=al==="auto"?autoAl(p0.rect.x,p0.rect.w,span):al;
+  const p=placeOnGrid(span,si,a,a==="right"?p0.rect.x+p0.rect.w-(measureBlock(S.copy,SIZES[si],spanW(span))||{w:0}).w:p0.rect.x,p0.rect.y);
+  if(!p){toast(T[lang].nofitText);return;}
+  commit(p);
+}
+function updateManualUI(){
+  const p=cur()&&cur().main;if(!p)return;
+  $("spanv").textContent=`${p.span} ${lang==="zh"?"栏":"col"}`;
+  document.querySelectorAll("[data-si]").forEach(b=>b.setAttribute("aria-pressed",+b.dataset.si===p.si));
+  document.querySelectorAll("[data-al]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.al===S.alMode));
+  $("reset").disabled=!S.manual;
+}
+document.querySelectorAll("[data-al]").forEach(b=>b.onclick=()=>{S.alMode=b.dataset.al;const p=cur().main;reshape(p.span,p.si,S.alMode);});
+document.querySelectorAll("[data-si]").forEach(b=>b.onclick=()=>{const p=cur().main;reshape(p.span,+b.dataset.si,S.alMode==="auto"?p.al:S.alMode);});
+$("span-dec").onclick=()=>{const p=cur().main;reshape(p.span-1,p.si,S.alMode==="auto"?(p.al==="center"?"left":p.al):S.alMode);};
+$("span-inc").onclick=()=>{const p=cur().main;reshape(p.span+1,p.si,S.alMode==="auto"?(p.al==="center"?"left":p.al):S.alMode);};
+$("opt-strict").onchange=e=>{S.strict=e.target.checked;if(S.strict&&S.manual)commit(cur().main);};
+$("reset").onclick=()=>{S.manual=null;S.alMode="auto";toast("");redraw();};
 $("copyspec").onclick=()=>{
-  const L=S.variants[S.vi],p=L.main;
+  const L=cur(),p=L.main;
   const spec={canvas:[W,H],grid:{columns:12,margin:[M,MT],column:COL,gutter:GUT,unit:U},
     headline:{align:p.al,columns:[p.c,p.c+p.span-1],x:Math.round(p.rect.x),y:p.rect.y,w:p.rect.w,h:p.rect.h,eyebrow:24,size:p.sz.h,lineHeight:p.sz.lh,body:p.sz.b,bodyLine:p.sz.blh,textColor:p.ct.color,contrast:+p.ct.ratio.toFixed(2),scrim:+p.ct.scrim.toFixed(2)},
     label:L.label?{x:L.label.rect.x,y:L.label.rect.y,align:L.label.al,anchor:[L.label.ax,L.label.ay],sizes:[28,24]}:null,

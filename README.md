@@ -18,6 +18,10 @@ A 16:9 (1920×1080) text-layout reference for video frames, built on the grid pr
 
 用法：直接用浏览器打开该文件，点击“载入照片”，或拖入、粘贴图片。
 
+**手动摆放 · Manual placement**：直接拖动主标题，或用方向键微调（↑↓ 12px，←→ 一栏，Shift ×4）。位置始终吸附栏线与 12px 网格，不越过边距、不压字幕区；可切换对齐（自动/左/中/右）、栏宽（3–8 栏）和字号（72/84/96）。开启严格模式时，违反原则 1 或 7（压主体、区域过杂、对比不足）的位置会自动吸附到最近的合规位置；实时徽标显示安静度、主体重叠和对比度。
+
+Drag the headline or nudge it with the arrow keys. It always snaps to column edges and the 12-px grid, stays inside the margins and clear of the subtitle zone. Alignment, width (3–8 columns) and size (72/84/96) are adjustable. Strict mode moves any spot that breaks principle 1 or 7 to the nearest spot that passes; a live badge shows quietness, subject overlap and contrast.
+
 | 原则 · Principle | 生成器如何执行 · How the finder applies it |
 |---|---|
 | 1 文字放在安静处 | 选繁杂度最低、不压主体的区域 · lowest-busyness area clear of the subject |
