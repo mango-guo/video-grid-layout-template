@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kitchen Frame Layout</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --page:#111214; --ink:#e9e6df; --muted:#8d8a84; --panel:#1a1b1e; --line:#2a2b2f;
+  --red:#ff3b6b;      /* redline: layout annotations */
+  --cyan:#35d0ff;     /* dimension lines */
+  --amber:#ffb547;    /* content zones */
+  --grid:rgba(53,208,255,.06);
+}
+@media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){ --page:#f1efea; --ink:#1b1b1d; --muted:#6b6862; --panel:#fff; --line:#dcd8d0; } }
+:root[data-theme="light"]{ --page:#f1efea; --ink:#1b1b1d; --muted:#6b6862; --panel:#fff; --line:#dcd8d0; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font:14px/1.5 Inter,system-ui,sans-serif}
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;padding:16px clamp(16px,3vw,32px)}
+header h1{font-size:16px;margin:0;font-weight:600}
+.bar{display:flex;flex-wrap:wrap;gap:8px}
+.bar button,.bar label{font:500 13px Inter,sans-serif;border:1px solid var(--line);background:var(--panel);color:var(--ink);padding:7px 12px;border-radius:6px;cursor:pointer}
+.bar button[aria-pressed="false"]{opacity:.45}
+.wrap{padding:0 clamp(16px,3vw,32px) 32px}
+.viewport{position:relative;width:100%;aspect-ratio:16/9;overflow:hidden;border-radius:4px;background:#000}
+#stage{position:absolute;left:0;top:0;width:1920px;height:1080px;transform-origin:0 0;overflow:hidden;background:#15110d}
+#stage > *{position:absolute;inset:0}
+#bg{width:1920px;height:1080px;object-fit:cover}
+.hidden{display:none!important}
+
+/* ---------- copy layer (the actual template) ---------- */
+.t{position:absolute;color:#f4efe6;font-family:Inter,sans-serif;margin:0;text-shadow:0 2px 18px rgba(0,0,0,.35)}
+#eyebrow{left:120px;top:96px;font-size:24px;line-height:36px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#e7c79b}
+#headline{left:120px;top:156px;width:544px;font-size:72px;line-height:84px;font-weight:700;letter-spacing:-.02em}
+#body{left:120px;top:360px;width:544px;font-size:32px;line-height:48px;font-weight:400;color:rgba(244,239,230,.82)}
+#brand{right:120px;top:96px;font-size:24px;line-height:36px;font-weight:700;letter-spacing:.24em;text-align:right;color:rgba(244,239,230,.75)}
+#tag{left:830px;top:720px;width:400px}
+#tag .k{font-size:28px;line-height:36px;font-weight:600}
+#tag .s{font-size:24px;line-height:36px;color:rgba(244,239,230,.72)}
+#subs{left:404px;width:1112px;top:872px;text-align:center}
+#subs .zh{font-family:"Noto Sans SC",sans-serif;font-size:40px;line-height:56px;font-weight:500;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+#subs .en{font-size:28px;line-height:44px;margin-top:12px;font-weight:500;color:#efe8dc;text-shadow:0 2px 6px rgba(0,0,0,.8)}
+
+/* ---------- annotation layer ---------- */
+svg text{font-family:"JetBrains Mono",monospace}
+.legend{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:20px}
+.legend div{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.legend b{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--red);color:#fff;font:600 12px "JetBrains Mono",monospace;margin-right:8px}
+.legend h3{font-size:13px;margin:0 0 4px;display:flex;align-items:center}
+.legend p{margin:0;color:var(--muted);font-size:13px}
+.note{color:var(--muted);font-size:13px;margin:12px 0 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>Kitchen frame · 1920×1080 text-layout template</h1>
+  <div class="bar">
+    <button data-layer="grid" aria-pressed="true">Grid</button>
+    <button data-layer="zones" aria-pressed="true">Zones</button>
+    <button data-layer="notes" aria-pressed="true">Redlines</button>
+    <button data-layer="copy" aria-pressed="true">Text</button>
+    <button id="shuffle">Shuffle copy</button>
+    <label>Load frame<input id="file" type="file" accept="image/*" hidden></label>
+  </div>
+</header>
+
+<div class="wrap">
+<div class="viewport" id="vp">
+<div id="stage">
+
+  <!-- 0. background: real frame (frame.jpg) or schematic stand-in -->
+  <svg id="schematic" viewBox="0 0 1920 1080" width="1920" height="1080">
+    <defs>
+      <linearGradient id="win" x1="0" x2="1"><stop offset="0" stop-color="#cfe0e6"/><stop offset="1" stop-color="#f3dcae"/></linearGradient>
+      <radialGradient id="warm" cx=".55" cy=".35" r=".7"><stop offset="0" stop-color="#6a4a2a"/><stop offset="1" stop-color="#1a130d"/></radialGradient>
+    </defs>
+    <rect width="1920" height="1080" fill="url(#warm)"/>
+    <rect x="0" y="0" width="650" height="840" fill="#1c1611"/>
+    <rect x="690" y="150" width="490" height="500" fill="url(#win)" opacity=".85"/>
+    <ellipse cx="1050" cy="110" rx="180" ry="125" fill="#c69a68" opacity=".8"/>
+    <path d="M1200 1080 L1230 420 Q1300 250 1380 220 Q1360 60 1460 40 Q1560 50 1540 200 Q1700 260 1760 560 L1660 600 L1610 1080 Z" fill="#3a3a2c"/>
+    <path d="M0 830 L1230 820 L1240 1080 L0 1080 Z" fill="#4b4741"/>
+    <path d="M272 478 L700 500 L772 800 L290 860 Z" fill="#0e1014" stroke="#2c2f36" stroke-width="6"/>
+    <rect x="378" y="560" width="190" height="230" rx="18" fill="#1e2a2a"/><rect x="545" y="565" width="150" height="210" rx="14" fill="#161a20"/>
+    <rect x="410" y="665" width="150" height="100" rx="14" fill="#2a6a5f"/>
+    <text x="960" y="560" fill="rgba(255,255,255,.35)" font-size="26" text-anchor="middle">SCHEMATIC STAND-IN · save your still as frame.jpg next to this file, or use “Load frame”</text>
+  </svg>
+  <img id="bg" class="hidden" alt="">
+
+  <!-- 1. 12-column grid -->
+  <svg id="grid" viewBox="0 0 1920 1080" width="1920" height="1080"></svg>
+
+  <!-- 2. content zones read from the footage -->
+  <svg id="zones" viewBox="0 0 1920 1080" width="1920" height="1080" fill="none" stroke-width="3">
+    <g stroke="var(--amber)" stroke-dasharray="14 10">
+      <rect x="120" y="96" width="544" height="360"/>      <!-- quiet wall: text -->
+      <path d="M272 478 L700 500 L772 800 L290 860 Z"/>     <!-- product UI -->
+      <rect x="1190" y="30" width="580" height="1050"/>    <!-- couple -->
+      <rect x="690" y="150" width="490" height="500"/>     <!-- window -->
+    </g>
+    <g fill="var(--amber)" font-size="20" font-weight="600" style="font-family:'JetBrains Mono',monospace">
+      <text x="128" y="448">A · QUIET ZONE — dark tiled wall → headline</text>
+      <text x="300" y="886">B · PRODUCT UI — secondary focal</text>
+      <text x="1198" y="1064">C · HERO ACTION — keep text off</text>
+      <text x="698" y="176">D · HOT WINDOW — no text (contrast)</text>
+    </g>
+  </svg>
+
+  <!-- 3. the template copy -->
+  <div id="copy">
+    <p class="t" id="eyebrow"></p>
+    <h2 class="t" id="headline"></h2>
+    <p class="t" id="body"></p>
+    <p class="t" id="brand"></p>
+    <div class="t" id="tag"><div class="k"></div><div class="s"></div></div>
+    <div class="t" id="subs"><div class="zh"></div><div class="en"></div></div>
+  </div>
+
+  <!-- 4. redlines -->
+  <svg id="notes" viewBox="0 0 1920 1080" width="1920" height="1080" fill="none"></svg>
+</div>
+</div>
+
+<div class="legend">
+  <div><h3><b>1</b>Text sits where the footage is quiet</h3><p>The headline block uses columns 1–4 over the dark wall (zone A). The window, the device and the couple each stay clear of text. Book p. 97: plan the image together with where the type will go.</p></div>
+  <div><h3><b>2</b>Three clearly different sizes</h3><p>Eyebrow 24 / headline 72 on 84 / body 32 on 48. Each step is a visible jump, so the levels don't read as one (p. 45).</p></div>
+  <div><h3><b>3</b>One shared left edge</h3><p>Eyebrow, headline and body all hang from x = 120 (column 1). Lining up on one edge tells the viewer they are one message (pp. 10–13).</p></div>
+  <div><h3><b>4</b>Spacing in 12-px steps</h3><p>Gaps are 24, 36 and 48 px. The rhythm is set by these steps, not by eye, per shot.</p></div>
+  <div><h3><b>5</b>Label tied to its object</h3><p>The UI label starts on column 6 and a leader line runs to the screen. A data label must stay visibly attached to the thing it describes.</p></div>
+  <div><h3><b>6</b>Subtitles have their own zone</h3><p>Chinese above English, centred over columns 3–10, sitting on the 96-px bottom margin. They are one group, kept apart from the headline system.</p></div>
+  <div><h3><b>7</b>Space left empty on purpose</h3><p>Columns 7–12 carry no type. The embrace is the message, and the open space lets it land (p. 72).</p></div>
+  <div><h3><b>8</b>Timing (suggested)</h3><p>Headline in at 0.0–0.6 s, body +0.3 s, UI label at about 1.5 s once the eye has found the device, subtitles synced to the VO. Hold everything at least 2.5 s after the last element settles.</p></div>
+</div>
+<p class="note">Sizes are 1920×1080 design pixels. The headline, the UI label and the subtitles each need a contrast check on the real footage. The UI label sits over a blurred mid-tone table, so add a soft 20–30% scrim if it reads weakly. Not yet checked at phone size.</p>
+</div>
+
+<script>
+const COPY = [
+  {eyebrow:"Home, in sync", h:["Plan less.","Hold on longer."], body:"Your day arranges itself.", brand:"HEARTH", k:"Calendar · Weather · Photos", s:"Your whole day, one glance", zh:"日程交给它，拥抱留给彼此。", en:"Leave the schedule to it. Keep the embrace for each other."},
+  {eyebrow:"Afternoon, handled", h:["The screen","remembers."], body:"So you can forget the time.", brand:"HEARTH", k:"10:30 · 58° · 3 reminders", s:"Glanceable from across the room", zh:"它记得每件小事，你只管记住这一刻。", en:"It remembers the small things. You remember this."},
+  {eyebrow:"Smart home, quietly", h:["Less checking.","More living."], body:"One calm screen for all of it.", brand:"HEARTH", k:"Today at a glance", s:"Meals · plans · memories", zh:"少一点查看，多一点生活。", en:"Less checking, more living."},
+  {eyebrow:"Made for two", h:["Your day,","sorted."], body:"Your moment, untouched.", brand:"HEARTH", k:"Shared family calendar", s:"Synced for everyone at home", zh:"把安排交给屏幕，把时间还给彼此。", en:"Give the plans to the screen. Give the time back to each other."}
+];
+const $ = id => document.getElementById(id);
+let idx = Math.floor(Math.random()*COPY.length);
+function render(){
+  const c = COPY[idx];
+  $("eyebrow").textContent = c.eyebrow;
+  $("headline").innerHTML = c.h.map(l=>l.replace(/&/g,"&amp;").replace(/</g,"&lt;")).join("<br>");
+  $("body").textContent = c.body;
+  $("brand").textContent = c.brand;
+  document.querySelector("#tag .k").textContent = c.k;
+  document.querySelector("#tag .s").textContent = c.s;
+  document.querySelector("#subs .zh").textContent = c.zh;
+  document.querySelector("#subs .en").textContent = c.en;
+}
+$("shuffle").onclick = () => { idx = (idx+1)%COPY.length; render(); };
+render();
+
+/* grid: 12 cols, margin 120, gutter 24, col 118; top/bottom 96 */
+const NS="http://www.w3.org/2000/svg";
+const el=(tag,attrs,parent,txt)=>{const e=document.createElementNS(NS,tag);for(const k in attrs)e.setAttribute(k,attrs[k]);if(txt!=null)e.textContent=txt;parent.appendChild(e);return e;};
+const colX = n => 120 + (n-1)*142;
+const g=$("grid");
+for(let n=1;n<=12;n++){
+  el("rect",{x:colX(n),y:0,width:118,height:1080,fill:"var(--grid)"},g);
+  el("text",{x:colX(n)+59,y:30,fill:"var(--cyan)","font-size":18,"text-anchor":"middle",opacity:.8},g,n);
+}
+el("rect",{x:120,y:96,width:1680,height:888,fill:"none",stroke:"var(--cyan)","stroke-width":2,"stroke-dasharray":"4 6",opacity:.7},g);
+
+/* redlines */
+const N=$("notes"), R="var(--red)", C="var(--cyan)";
+function dim(x1,y1,x2,y2,label,lx,ly,anchor="middle"){
+  el("line",{x1,y1,x2,y2,stroke:C,"stroke-width":2},N);
+  const v=x1===x2;
+  [[x1,y1],[x2,y2]].forEach(([x,y])=>{const t=v?{x1:x-10,x2:x+10,y1:y,y2:y}:{x1:x,x2:x,y1:y-10,y2:y+10};t.stroke=C;t["stroke-width"]=2;el("line",t,N);});
+  el("text",{x:lx,y:ly,fill:C,"font-size":18,"font-weight":600,"text-anchor":anchor},N,label);
+}
+function tag(n,x,y,label,lx,ly,anchor="start"){
+  el("circle",{cx:x,cy:y,r:17,fill:R},N);
+  el("text",{x,y:y+6,fill:"#fff","font-size":17,"font-weight":600,"text-anchor":"middle"},N,n);
+  if(label){
+    el("line",{x1:x+(anchor==="start"?17:-17),y1:y,x2:lx,y2:ly-6,stroke:R,"stroke-width":2},N);
+    el("text",{x:lx+(anchor==="start"?8:-8),y:ly,fill:R,"font-size":19,"font-weight":600,"text-anchor":anchor},N,label);
+  }
+}
+// margins
+dim(0,62,120,62,"120",60,54);
+dim(1800,62,1920,62,"120",1860,54);
+dim(70,0,70,96,"96",82,90,"start");
+dim(70,984,70,1080,"96",62,1038,"end");
+// column + gutter
+dim(colX(2),1010,colX(2)+118,1010,"col 118",colX(2)+59,1040);
+dim(colX(2)+118,1050,colX(3),1050,"gut 24",colX(3)+60,1074,"start");
+// left edge alignment
+el("line",{x1:120,y1:96,x2:120,y2:456,stroke:R,"stroke-width":3},N);
+tag(3,120,470,"shared left edge x=120",150,500);
+// vertical rhythm brackets right of headline block
+const bx=690;
+[[96,132,"24 · eyebrow"],[156,324,"72/84 · headline"],[360,408,"32/48 · body"]].forEach(([a,b,l])=>{
+  el("path",{d:`M${bx-10} ${a} H${bx} V${b} H${bx-10}`,stroke:R,"stroke-width":2},N);
+  el("text",{x:bx+12,y:(a+b)/2+7,fill:R,"font-size":19,"font-weight":600},N,l);
+});
+dim(bx+190,132,bx+190,156,"24",bx+202,150,"start");
+dim(bx+190,324,bx+190,360,"36",bx+202,348,"start");
+tag(2,bx+6,56,"type scale 24 / 72 / 32",bx+40,62);
+tag(1,664,456,null);
+// leader from UI screen to label
+el("circle",{cx:640,cy:700,r:7,fill:"#fff"},N);
+el("polyline",{points:"640,700 760,744 818,744",stroke:"#fff","stroke-width":2,fill:"none",opacity:.9},N);
+tag(5,830,690,"label anchored on col 6 → leader to screen",870,670);
+// subtitles
+el("rect",{x:404,y:872,width:1112,height:112,stroke:R,"stroke-width":2,"stroke-dasharray":"8 6"},N);
+dim(1540,872,1540,984,"112",1552,934,"start");
+tag(6,1516,872,"bilingual subtitle group · cols 3–10 · ZH 40 / EN 28",1490,848,"end");
+// empty space
+tag(7,1560,300,"cols 7–12: no type — let the action breathe",1540,260,"end");
+// 12px rhythm note
+tag(4,120,540,"spacing unit 12 → 24 / 36 / 48",150,572);
+</script>
+<script>
+/* fit stage, layer toggles, frame loading */
+const vp=document.getElementById("vp"), stage=document.getElementById("stage");
+const fit=()=>{stage.style.transform=`scale(${vp.clientWidth/1920})`;};
+new ResizeObserver(fit).observe(vp); fit();
+document.querySelectorAll("[data-layer]").forEach(b=>b.onclick=()=>{
+  const on=b.getAttribute("aria-pressed")!=="true"; b.setAttribute("aria-pressed",on);
+  document.getElementById(b.dataset.layer).classList.toggle("hidden",!on);
+});
+const bg=document.getElementById("bg"), sch=document.getElementById("schematic");
+const show=src=>{bg.onload=()=>{bg.classList.remove("hidden");sch.classList.add("hidden");};bg.src=src;};
+show("frame.jpg");
+document.getElementById("file").onchange=e=>{const f=e.target.files[0];if(f)show(URL.createObjectURL(f));};
+vp.ondragover=e=>e.preventDefault();
+vp.ondrop=e=>{e.preventDefault();const f=e.dataTransfer.files[0];if(f)show(URL.createObjectURL(f));};
+const q=new URLSearchParams(location.search);
+if(q.has("copy")){idx=+q.get("copy")%COPY.length;render();}
+if(q.has("export")){document.querySelector("header").remove();document.querySelectorAll(".legend,.note").forEach(n=>n.remove());
+  document.body.style.margin=0;document.querySelector(".wrap").style.padding=0;vp.style.cssText="width:1920px;height:1080px;border-radius:0";stage.style.transform="none";}
+q.get("hide")?.split(",").forEach(id=>{document.getElementById(id)?.classList.add("hidden");});
+</script>
+</body>
+</html>
